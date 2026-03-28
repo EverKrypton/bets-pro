@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Layout  from '@/components/Layout';
+import Layout from '@/components/Layout';
 import {
-  Shield, Check, X, Plus, RefreshCw, Trophy, ChevronDown, ChevronUp,
-  Trash2, CheckCircle2, Settings,
+  Shield, Check, X, Plus, RefreshCw, Trophy,
+  ChevronDown, ChevronUp, Trash2, CheckCircle2, Settings,
 } from 'lucide-react';
 import { LEAGUES } from '@/lib/sports';
 
@@ -18,9 +18,7 @@ interface Match {
   date:        string;
   time:        string;
   status:      MatchStatus;
-  trueOdds:    { home: number; draw: number; away: number } | null;
   displayOdds: { home: number; draw: number; away: number } | null;
-  marginPct:   number;
   result:      string | null;
 }
 
@@ -41,23 +39,20 @@ const STATUS_COLOR: Record<MatchStatus, string> = {
 };
 
 export default function AdminPage() {
-  const [matches, setMatches]         = useState<Match[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [matches, setMatches]           = useState<Match[]>([]);
+  const [withdrawals, setWithdrawals]   = useState<Withdrawal[]>([]);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [activeTab, setActiveTab]     = useState<'matches' | 'withdrawals'>('matches');
+  const [activeTab, setActiveTab]       = useState<'matches' | 'withdrawals'>('matches');
 
-  // Import match form
   const [importLeague, setImportLeague] = useState('la_liga');
   const [importing, setImporting]       = useState(false);
   const [importMsg, setImportMsg]       = useState('');
 
-  // Odds editor per match
   const [editingId, setEditingId]     = useState<string | null>(null);
-  const [oddsForm, setOddsForm]       = useState({ home: '', draw: '', away: '', marginPct: '10', status: 'open' });
+  const [oddsForm, setOddsForm]       = useState({ home: '', draw: '', away: '', status: 'open' });
 
-  // Settle
-  const [settlingId, setSettlingId]   = useState<string | null>(null);
+  const [settlingId, setSettlingId]     = useState<string | null>(null);
   const [settleResult, setSettleResult] = useState<'home' | 'draw' | 'away'>('home');
 
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -98,7 +93,7 @@ export default function AdminPage() {
     })();
   }, [fetchMatches, fetchWithdrawals]);
 
-  const importMatch = async () => {
+  const importMatches = async () => {
     setImporting(true);
     setImportMsg('');
     const res  = await fetch('/api/admin/matches', {
@@ -108,25 +103,24 @@ export default function AdminPage() {
     });
     const data = await res.json();
     setImporting(false);
-    setImportMsg(data.message || (res.ok ? 'Match imported!' : data.error));
+    setImportMsg(res.ok ? data.message : data.error);
     if (res.ok) fetchMatches();
   };
 
   const saveOdds = async (matchId: string) => {
-    const home      = parseFloat(oddsForm.home);
-    const draw      = parseFloat(oddsForm.draw);
-    const away      = parseFloat(oddsForm.away);
-    const marginPct = parseFloat(oddsForm.marginPct);
+    const home = parseFloat(oddsForm.home);
+    const draw = parseFloat(oddsForm.draw);
+    const away = parseFloat(oddsForm.away);
 
-    if ([home, draw, away].some((o) => isNaN(o) || o < 1)) {
-      notify('All odds must be >= 1', false);
+    if ([home, draw, away].some((o) => isNaN(o) || o < 1.01)) {
+      notify('All odds must be numbers >= 1.01', false);
       return;
     }
 
     const res  = await fetch(`/api/admin/matches/${matchId}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ trueOdds: { home, draw, away }, marginPct, status: oddsForm.status }),
+      body:    JSON.stringify({ odds: { home, draw, away }, status: oddsForm.status }),
     });
     const data = await res.json();
 
@@ -148,7 +142,7 @@ export default function AdminPage() {
     const data = await res.json();
 
     if (res.ok) {
-      notify(`Settled! Winners: ${data.winnersCount}, Losers: ${data.losersCount}`, true);
+      notify(`Settled! Winners: ${data.winnersCount} · Losers: ${data.losersCount}`, true);
       setSettlingId(null);
       fetchMatches();
     } else {
@@ -171,9 +165,7 @@ export default function AdminPage() {
       body:    JSON.stringify({ transactionId: id, action }),
     });
     const data = await res.json();
-    res.ok
-      ? notify(`Withdrawal ${action}d`, true)
-      : notify(data.error || 'Action failed', false);
+    res.ok ? notify(`Withdrawal ${action}d`, true) : notify(data.error || 'Action failed', false);
     fetchWithdrawals();
   };
 
@@ -217,18 +209,18 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex bg-surface rounded-2xl p-1 border border-white/5">
+        <div className="flex bg-surface rounded-2xl p-1 border border-white/5 gap-1">
           {(['matches', 'withdrawals'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+              className={`flex-1 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                 activeTab === tab
                   ? 'bg-gradient-to-r from-accent to-accent text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              {tab === 'matches' ? <span className="flex items-center justify-center gap-2"><Trophy size={14} /> Matches</span> : <span className="flex items-center justify-center gap-2"><Settings size={14} /> Withdrawals</span>}
+              {tab === 'matches' ? <><Trophy size={14} /> Matches</> : <><Settings size={14} /> Withdrawals</>}
             </button>
           ))}
         </div>
@@ -236,10 +228,10 @@ export default function AdminPage() {
         {/* ── Matches Tab ── */}
         {activeTab === 'matches' && (
           <div className="space-y-4">
-            {/* Import from API */}
+            {/* Import */}
             <div className="bg-surface rounded-2xl border border-white/5 p-4 space-y-3">
               <h2 className="font-black uppercase tracking-wider text-sm flex items-center gap-2">
-                <Plus size={14} className="text-accent" /> Import Next Match from TheSportsDB
+                <Plus size={14} className="text-accent" /> Import Matches from TheSportsDB
               </h2>
               <div className="flex gap-2">
                 <select
@@ -252,29 +244,29 @@ export default function AdminPage() {
                   ))}
                 </select>
                 <button
-                  onClick={importMatch}
+                  onClick={importMatches}
                   disabled={importing}
-                  className="bg-accent text-white px-4 py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                  className="bg-accent text-white px-4 py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                 >
-                  {importing ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <RefreshCw size={14} />}
-                  Import
+                  {importing
+                    ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    : <RefreshCw size={14} />}
+                  Import All
                 </button>
               </div>
               {importMsg && <p className="text-xs text-gray-400">{importMsg}</p>}
             </div>
 
-            {/* Match list */}
             {matches.length === 0 ? (
-              <p className="text-center text-gray-400 text-sm py-8">No matches yet. Import one above.</p>
+              <p className="text-center text-gray-400 text-sm py-8">No matches yet. Import a league above.</p>
             ) : (
               matches.map((match) => (
                 <div key={match._id} className="bg-surface rounded-2xl border border-white/5 overflow-hidden">
-                  {/* Match header */}
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-1">
                       <div>
                         <p className="font-black">{match.homeTeam} vs {match.awayTeam}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{match.league} • {match.date} {match.time !== 'TBD' ? `• ${match.time}` : ''}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{match.league} · {match.date} {match.time !== 'TBD' ? `· ${match.time}` : ''}</p>
                       </div>
                       <span className={`text-xs font-black uppercase ${STATUS_COLOR[match.status]}`}>{match.status}</span>
                     </div>
@@ -283,7 +275,7 @@ export default function AdminPage() {
                       <div className="flex gap-2 mt-3">
                         {(['home', 'draw', 'away'] as const).map((sel) => (
                           <div key={sel} className="flex-1 bg-background rounded-lg p-2 text-center">
-                            <p className="text-[10px] text-gray-500 font-bold">{sel.toUpperCase()}</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase">{sel}</p>
                             <p className="font-black text-secondary text-sm">{match.displayOdds![sel]?.toFixed(2) ?? '-'}</p>
                           </div>
                         ))}
@@ -292,17 +284,15 @@ export default function AdminPage() {
 
                     {match.status !== 'settled' && (
                       <div className="flex gap-2 mt-3">
-                        {/* Edit odds button */}
                         <button
                           onClick={() => {
                             if (editingId === match._id) { setEditingId(null); return; }
                             setEditingId(match._id);
                             setOddsForm({
-                              home:      match.trueOdds?.home?.toString() ?? '',
-                              draw:      match.trueOdds?.draw?.toString() ?? '',
-                              away:      match.trueOdds?.away?.toString() ?? '',
-                              marginPct: match.marginPct?.toString() ?? '10',
-                              status:    match.status,
+                              home:   match.displayOdds?.home?.toString() ?? '',
+                              draw:   match.displayOdds?.draw?.toString() ?? '',
+                              away:   match.displayOdds?.away?.toString() ?? '',
+                              status: match.status,
                             });
                           }}
                           className="flex-1 bg-background border border-white/10 text-sm font-black py-2 rounded-xl flex items-center justify-center gap-1 hover:bg-white/5"
@@ -310,20 +300,18 @@ export default function AdminPage() {
                           <Settings size={13} /> Odds {editingId === match._id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                         </button>
 
-                        {/* Settle button */}
                         {match.status === 'closed' && (
                           <button
-                            onClick={() => { setSettlingId(settlingId === match._id ? null : match._id); }}
+                            onClick={() => setSettlingId(settlingId === match._id ? null : match._id)}
                             className="flex-1 bg-primary/10 text-primary border border-primary/20 text-sm font-black py-2 rounded-xl flex items-center justify-center gap-1 hover:bg-primary/20"
                           >
                             <CheckCircle2 size={13} /> Settle {settlingId === match._id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                           </button>
                         )}
 
-                        {/* Delete button */}
                         <button
                           onClick={() => deleteMatch(match._id)}
-                          className="bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl hover:bg-red-500/20 transition-colors"
+                          className="bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl hover:bg-red-500/20"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -334,7 +322,9 @@ export default function AdminPage() {
                   {/* Odds editor */}
                   {editingId === match._id && (
                     <div className="border-t border-white/5 p-4 bg-background/30 space-y-3">
-                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">True Odds (admin only — never shown to users)</p>
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                        Set odds — exactly what users will see
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
                         {(['home', 'draw', 'away'] as const).map((sel) => (
                           <div key={sel}>
@@ -342,45 +332,32 @@ export default function AdminPage() {
                             <input
                               type="number"
                               step="0.01"
-                              min="1"
+                              min="1.01"
                               value={oddsForm[sel]}
                               onChange={(e) => setOddsForm({ ...oddsForm, [sel]: e.target.value })}
                               className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-accent/50"
-                              placeholder="e.g. 2.10"
+                              placeholder="e.g. 1.85"
                             />
                           </div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">House Margin %</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={oddsForm.marginPct}
-                            onChange={(e) => setOddsForm({ ...oddsForm, marginPct: e.target.value })}
-                            className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-accent/50"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Status</label>
-                          <select
-                            value={oddsForm.status}
-                            onChange={(e) => setOddsForm({ ...oddsForm, status: e.target.value })}
-                            className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm font-bold outline-none"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="open">Open</option>
-                            <option value="closed">Closed</option>
-                          </select>
-                        </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Status</label>
+                        <select
+                          value={oddsForm.status}
+                          onChange={(e) => setOddsForm({ ...oddsForm, status: e.target.value })}
+                          className="w-full bg-background border border-white/10 rounded-lg px-3 py-2 text-sm font-bold outline-none"
+                        >
+                          <option value="pending">Pending (not visible to users)</option>
+                          <option value="open">Open (users can bet)</option>
+                          <option value="closed">Closed (no more bets)</option>
+                        </select>
                       </div>
                       <button
                         onClick={() => saveOdds(match._id)}
                         className="w-full py-2.5 bg-accent text-white rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90"
                       >
-                        Save Odds
+                        Save Odds & Status
                       </button>
                     </div>
                   )}
@@ -408,7 +385,7 @@ export default function AdminPage() {
                         onClick={() => settleMatch(match._id)}
                         className="w-full py-2.5 bg-primary text-background rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90"
                       >
-                        Confirm Settle — {settleResult.toUpperCase()} wins
+                        Confirm — {settleResult.toUpperCase()} wins
                       </button>
                     </div>
                   )}
@@ -459,4 +436,4 @@ export default function AdminPage() {
       </div>
     </Layout>
   );
-}
+    }
