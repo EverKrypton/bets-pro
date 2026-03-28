@@ -34,7 +34,7 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-tight mb-2">
                 Welcome to{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-secondary">
-                  Foxy Cash
+                  Bets Pro
                 </span>
               </h1>
               <p className="text-gray-400 mb-5 text-sm font-medium">
