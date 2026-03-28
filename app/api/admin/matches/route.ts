@@ -1,7 +1,7 @@
-import { NextResponse }                        from 'next/server';
-import dbConnect                               from '@/lib/db';
-import { getSessionUser }                      from '@/lib/session';
-import Match                                   from '@/models/Match';
+import { NextResponse }                              from 'next/server';
+import dbConnect                                     from '@/lib/db';
+import { getSessionUser }                            from '@/lib/session';
+import Match                                         from '@/models/Match';
 import { fetchAllLeagues, fetchAllMatches, LEAGUES } from '@/lib/sports';
 
 export async function GET() {
@@ -24,9 +24,11 @@ export async function POST(req: Request) {
 
     const { league = 'all' } = await req.json().catch(() => ({}));
 
-    // Validate league
     if (league !== 'all' && !LEAGUES[league]) {
-      return NextResponse.json({ error: `Invalid league. Options: all, ${Object.keys(LEAGUES).join(', ')}` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Invalid league. Options: all, ${Object.keys(LEAGUES).join(', ')}` },
+        { status: 400 },
+      );
     }
 
     const events = league === 'all'
@@ -34,34 +36,54 @@ export async function POST(req: Request) {
       : await fetchAllMatches(league);
 
     let imported = 0;
-    let skipped  = 0;
+    let updated  = 0;
 
     for (const event of events) {
-      // Dedup: by apiId if present, otherwise by homeTeam+awayTeam+date
+      // Build the search query — prefer apiId, fallback to team+date combo
       const query = event.apiId
         ? { apiId: event.apiId }
         : { homeTeam: event.homeTeam, awayTeam: event.awayTeam, date: event.date };
 
       const existing = await Match.findOne(query);
-      if (existing) { skipped++; continue; }
 
+      if (existing) {
+        // Update badges and league info but keep status/odds untouched
+        const changed =
+          existing.homeBadge !== event.homeBadge ||
+          existing.awayBadge !== event.awayBadge ||
+          !existing.league;
+
+        if (changed) {
+          existing.homeBadge = event.homeBadge;
+          existing.awayBadge = event.awayBadge;
+          if (!existing.league) existing.league = event.league;
+          await existing.save();
+          updated++;
+        }
+        continue;
+      }
+
+      // New match — create it
       await Match.create({
-        apiId:      event.apiId  || null,
-        homeTeam:   event.homeTeam,
-        awayTeam:   event.awayTeam,
-        homeBadge:  event.homeBadge,
-        awayBadge:  event.awayBadge,
-        league:     event.league,
-        date:       event.date,
-        time:       event.time,
-        venue:      event.venue,
-        status:     'pending',
+        apiId:     event.apiId  || null,
+        homeTeam:  event.homeTeam,
+        awayTeam:  event.awayTeam,
+        homeBadge: event.homeBadge,
+        awayBadge: event.awayBadge,
+        league:    event.league,
+        date:      event.date,
+        time:      event.time,
+        venue:     event.venue,
+        status:    'pending',
       });
       imported++;
     }
 
     return NextResponse.json(
-      { message: `${imported} imported, ${skipped} already existed`, imported, skipped, total: events.length },
+      {
+        message: `${imported} new, ${updated} updated with badges`,
+        imported, updated, total: events.length,
+      },
       { status: 201 },
     );
   } catch (error: unknown) {
