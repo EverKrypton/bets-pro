@@ -1,104 +1,104 @@
 /**
- * OxaPay v1 API helpers — USDT BEP20 (BSC Network)
- *
- * Deposit  → POST https://api.oxapay.com/v1/payment/static-address
- *              Header: merchant_api_key
- *
- * Payout   → POST https://api.oxapay.com/v1/payout
- *              Header: payout_api_key
- *
- * Webhook HMAC: sha512 of raw POST body
- *   - payment types (invoice / static_address / …) → signed with MERCHANT_API_KEY
- *   - payout type                                   → signed with PAYOUT_API_KEY
+ * OxaPay v1 API — USDT BEP20 (BSC)
+ * Deposit:  POST https://api.oxapay.com/v1/payment/static-address  Header: merchant_api_key
+ * Payout:   POST https://api.oxapay.com/v1/payout                  Header: payout_api_key
+ * Webhook:  HMAC-SHA512(rawBody, key) in "hmac" header
+ *   payment types → MERCHANT_API_KEY
+ *   payout type   → PAYOUT_API_KEY
  */
 
-const MERCHANT_API_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
-const PAYOUT_API_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
-const APP_URL          = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
+const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
+const APP_URL      = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
 
-export interface OxaPayStaticAddressResponse {
-  data: {
-    track_id: string;
-    address:  string;
-    network:  string;
-    currency: string;
-  };
+export interface OxaStaticResponse {
+  result:  number;   // 100 = success per OxaPay v1 docs
   message: string;
-  error:   Record<string, unknown> | null;
-  status:  number;
-  version: string;
+  address: string;
+  network: string;
+  currency: string;
 }
 
-export interface OxaPayPayoutResponse {
-  data: {
-    track_id: string;
-    status:   string;
-  };
-  message: string;
-  error:   Record<string, unknown> | null;
-  status:  number;
-  version: string;
+export interface OxaPayoutResponse {
+  result:   number;
+  message:  string;
+  trackId:  string;
+  status:   string;
 }
 
 /**
- * Creates (or retrieves) a static USDT BEP20 address for a user.
+ * Create (or retrieve) a static USDT BSC deposit address for a user.
+ * OxaPay v1 /payment/static-address
  * Same order_id always returns the same address.
  */
-export async function createStaticAddress(
-  userId: string,
-): Promise<OxaPayStaticAddressResponse> {
-  if (!MERCHANT_API_KEY) throw new Error('OXAPAY_MERCHANT_API_KEY is not configured');
+export async function createStaticAddress(userId: string): Promise<{ data: { address: string; network: string; track_id: string; currency: string } }> {
+  if (!MERCHANT_KEY) throw new Error('OXAPAY_MERCHANT_API_KEY not configured');
 
-  const response = await fetch('https://api.oxapay.com/v1/payment/static-address', {
+  const res = await fetch('https://api.oxapay.com/merchants/request/static-address', {
     method:  'POST',
-    headers: {
-      'Content-Type':    'application/json',
-      'merchant_api_key': MERCHANT_API_KEY,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      network:         'BSC',
-      to_currency:     'USDT',
-      auto_withdrawal: false,
-      callback_url:    `${APP_URL}/api/webhook/oxapay`,
-      order_id:        `deposit-${userId}`,
-      description:     `Foxy Cash Casino deposit for user ${userId}`,
+      merchant:    MERCHANT_KEY,
+      currency:    'USDT',
+      network:     'BSC',
+      callbackUrl: `${APP_URL}/api/webhook/oxapay`,
+      description: `Bets Pro deposit user ${userId}`,
     }),
   });
 
-  const data: OxaPayStaticAddressResponse = await response.json();
-  if (data.status !== 200) throw new Error(data.message || 'OxaPay static address creation failed');
-  return data;
+  const data = await res.json();
+
+  // OxaPay v1 returns result: 100 for success
+  if (data.result !== 100) throw new Error(data.message || 'OxaPay static address failed');
+
+  // Normalise to the shape the rest of the code expects
+  return {
+    data: {
+      address:  data.address,
+      network:  data.network  ?? 'BSC',
+      currency: data.currency ?? 'USDT',
+      track_id: data.trackId  ?? '',
+    },
+  };
 }
 
 /**
- * Sends a USDT BEP20 payout to an address.
- * amount is in USDT. Fee of 1 USDT is deducted before calling this.
+ * Send a USDT payout. amount is net (after 1 USDT fee already deducted).
+ * OxaPay v1 /payout
  */
 export async function createPayout(
   address:     string,
   amount:      number,
-  network:     string = 'BEP20',
+  network:     string = 'BSC',
   description: string = '',
-): Promise<OxaPayPayoutResponse> {
-  if (!PAYOUT_API_KEY) throw new Error('OXAPAY_PAYOUT_API_KEY is not configured');
+): Promise<{ data: { track_id: string; status: string } }> {
+  if (!PAYOUT_KEY) throw new Error('OXAPAY_PAYOUT_API_KEY not configured');
 
-  const response = await fetch('https://api.oxapay.com/v1/payout', {
+  // OxaPay expects network in their own format: BSC for BEP20, TRX for TRC20, ETH for ERC20
+  const netMap: Record<string, string> = { BEP20: 'BSC', TRC20: 'TRX', ERC20: 'ETH', BSC: 'BSC', TRX: 'TRX', ETH: 'ETH' };
+  const oxaNetwork = netMap[network.toUpperCase()] ?? network;
+
+  const res = await fetch('https://api.oxapay.com/merchants/request/payout', {
     method:  'POST',
-    headers: {
-      'Content-Type':   'application/json',
-      'payout_api_key': PAYOUT_API_KEY,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      key:         PAYOUT_KEY,
       address,
-      amount,
-      currency:     'USDT',
-      network,
-      callback_url: `${APP_URL}/api/webhook/oxapay`,
-      description:  description || `FCC withdrawal to ${address}`,
+      amount:      amount.toString(),
+      currency:    'USDT',
+      network:     oxaNetwork,
+      callbackUrl: `${APP_URL}/api/webhook/oxapay`,
+      description: description || `Bets Pro withdrawal to ${address}`,
     }),
   });
 
-  const data: OxaPayPayoutResponse = await response.json();
-  if (data.status !== 200) throw new Error(data.message || 'OxaPay payout creation failed');
-  return data;
+  const data = await res.json();
+  if (data.result !== 100) throw new Error(data.message || 'OxaPay payout failed');
+
+  return {
+    data: {
+      track_id: data.trackId ?? '',
+      status:   data.status  ?? 'pending',
+    },
+  };
 }

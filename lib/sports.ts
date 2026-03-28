@@ -1,8 +1,3 @@
-/**
- * TheSportsDB free public API — no API key required for v1/json/3
- * Docs: https://www.thesportsdb.com/api.php
- */
-
 const BASE = 'https://www.thesportsdb.com/api/v1/json/3';
 
 export const LEAGUES: Record<string, { id: string; name: string }> = {
@@ -15,46 +10,72 @@ export const LEAGUES: Record<string, { id: string; name: string }> = {
 };
 
 export interface SportsEvent {
-  apiId:    string;
-  homeTeam: string;
-  awayTeam: string;
-  league:   string;
-  date:     string;
-  time:     string;
-  venue:    string;
+  apiId:      string;
+  homeTeam:   string;
+  awayTeam:   string;
+  homeBadge:  string;
+  awayBadge:  string;
+  league:     string;
+  leagueKey:  string;
+  date:       string;
+  time:       string;
+  venue:      string;
 }
 
-function parseEvent(e: Record<string, string>): SportsEvent {
+function parseEvent(e: Record<string, string>, leagueKey: string): SportsEvent {
   return {
-    apiId:    e.idEvent,
-    homeTeam: e.strHomeTeam,
-    awayTeam: e.strAwayTeam,
-    league:   e.strLeague,
-    date:     e.dateEvent,
-    time:     e.strTime ?? 'TBD',
-    venue:    e.strVenue ?? '',
+    apiId:      e.idEvent      ?? '',
+    homeTeam:   e.strHomeTeam  ?? '',
+    awayTeam:   e.strAwayTeam  ?? '',
+    homeBadge:  e.strHomeTeamBadge ?? '',
+    awayBadge:  e.strAwayTeamBadge ?? '',
+    league:     e.strLeague    ?? '',
+    leagueKey,
+    date:       e.dateEvent    ?? '',
+    time:       e.strTime      ?? 'TBD',
+    venue:      e.strVenue     ?? '',
   };
 }
 
-/**
- * Returns ALL upcoming events for the given league, sorted by date ascending.
- */
+/** Fetch ALL upcoming matches from ALL leagues at once */
+export async function fetchAllLeagues(): Promise<SportsEvent[]> {
+  const results: SportsEvent[] = [];
+
+  await Promise.allSettled(
+    Object.entries(LEAGUES).map(async ([leagueKey, league]) => {
+      try {
+        const res  = await fetch(`${BASE}/eventsnextleague.php?id=${league.id}`, {
+          headers: { 'User-Agent': 'bets-pro/1.0' },
+          next:    { revalidate: 0 },
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!body.events?.length) return;
+        const events = body.events.map((e: Record<string, string>) => parseEvent(e, leagueKey));
+        results.push(...events);
+      } catch {
+        // skip failed leagues silently
+      }
+    }),
+  );
+
+  return results.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+}
+
+/** Fetch upcoming matches for a single league */
 export async function fetchAllMatches(leagueKey = 'la_liga'): Promise<SportsEvent[]> {
   const league = LEAGUES[leagueKey] ?? LEAGUES.la_liga;
   const res    = await fetch(`${BASE}/eventsnextleague.php?id=${league.id}`, {
-    headers: { 'User-Agent': 'foxy-cash-casino/1.0' },
+    headers: { 'User-Agent': 'bets-pro/1.0' },
     next:    { revalidate: 0 },
   });
-
   if (!res.ok) throw new Error(`TheSportsDB error: ${res.status}`);
-
   const body = await res.json();
-  if (!body.events?.length) throw new Error('No upcoming events found for this league');
-
+  if (!body.events?.length) throw new Error('No upcoming events found');
   return [...body.events]
-    .sort(
-      (a: Record<string, string>, b: Record<string, string>) =>
-        new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime(),
-    )
-    .map(parseEvent);
+    .sort((a: Record<string, string>, b: Record<string, string>) =>
+      new Date(a.dateEvent).getTime() - new Date(b.dateEvent).getTime())
+    .map((e: Record<string, string>) => parseEvent(e, leagueKey));
 }

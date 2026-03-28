@@ -47,7 +47,7 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [activeTab, setActiveTab]       = useState<'matches' | 'withdrawals' | 'applications'>('matches');
 
-  const [importLeague, setImportLeague] = useState('la_liga');
+  const [importLeague, setImportLeague] = useState('all');
   const [importing, setImporting]       = useState(false);
   const [importMsg, setImportMsg]       = useState('');
 
@@ -213,6 +213,7 @@ export default function AdminPage() {
                   className="flex-1 bg-background border border-white/8 rounded-xl px-3 py-2.5 text-sm font-medium outline-none"
                 >
                   {Object.entries(LEAGUES).map(([k,v]) => <option key={k} value={k}>{v.name}</option>)}
+                  <option value="all">⚡ All Leagues at Once</option>
                 </select>
                 <button
                   onClick={importMatches} disabled={importing}
