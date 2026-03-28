@@ -3,36 +3,20 @@ import dbConnect          from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
 import Bet                from '@/models/Bet';
 import Match              from '@/models/Match';
+import Settings           from '@/models/Settings';
 
-const MIN_BET     = 1;
 const ALL_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
 type Market = typeof ALL_MARKETS[number];
 
-// Double-chance odds derived from display odds
-function doubleChanceOdd(
-  displayOdds: { home: number; draw: number; away: number },
-  market: Market,
-): number {
-  const { home, draw, away } = displayOdds;
-  const pH = 1 / home;
-  const pD = 1 / draw;
-  const pA = 1 / away;
-
-  let combinedProb: number;
-  if (market === '1x') combinedProb = pH + pD;
-  else if (market === 'x2') combinedProb = pD + pA;
-  else combinedProb = pH + pA; // 12
-
-  return Math.max(1.01, Number((1 / combinedProb).toFixed(2)));
+function doubleChanceOdd(odds: { home: number; draw: number; away: number }, market: Market): number {
+  const pH = 1 / odds.home, pD = 1 / odds.draw, pA = 1 / odds.away;
+  const p  = market === '1x' ? pH + pD : market === 'x2' ? pD + pA : pH + pA;
+  return Math.max(1.02, Number((1 / p).toFixed(2)));
 }
 
 export async function POST(req: Request) {
   try {
     const { amount, matchId, selection } = await req.json();
-
-    if (!amount || amount < MIN_BET) {
-      return NextResponse.json({ error: `Minimum bet is ${MIN_BET} USDT` }, { status: 400 });
-    }
 
     if (!matchId || !ALL_MARKETS.includes(selection as Market)) {
       return NextResponse.json({ error: 'matchId and a valid selection are required' }, { status: 400 });
@@ -40,11 +24,36 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
+    // Load settings for limits
+    const settings = await Settings.findOneAndUpdate(
+      { key: 'global' },
+      { $setOnInsert: { key: 'global' } },
+      { upsert: true, new: true },
+    );
+
+    const minBet   = settings?.minBetAmount       ?? 1;
+    const maxBet   = settings?.maxBetAmount       ?? 50;
+    const maxPayout = settings?.maxPotentialPayout ?? 200;
+
+    if (!amount || isNaN(Number(amount))) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+
+    const betAmount = parseFloat(Number(amount).toFixed(6));
+
+    if (betAmount < minBet) {
+      return NextResponse.json({ error: `Minimum bet is ${minBet} USDT` }, { status: 400 });
+    }
+
+    if (betAmount > maxBet) {
+      return NextResponse.json({ error: `Maximum bet is ${maxBet} USDT` }, { status: 400 });
+    }
+
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.balance < amount) {
-      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
+    if (user.balance < betAmount) {
+      return NextResponse.json({ error: `Insufficient balance. You have ${user.balance.toFixed(2)} USDT` }, { status: 400 });
     }
 
     const match = await Match.findById(matchId);
@@ -67,14 +76,21 @@ export async function POST(req: Request) {
       odd = doubleChanceOdd(match.displayOdds, sel);
     }
 
-    const potentialPayout = parseFloat((amount * odd).toFixed(6));
+    const potentialPayout = parseFloat((betAmount * odd).toFixed(6));
 
-    user.balance = parseFloat((user.balance - amount).toFixed(6));
+    if (potentialPayout > maxPayout) {
+      const maxAllowed = parseFloat((maxPayout / odd).toFixed(2));
+      return NextResponse.json({
+        error: `Max potential win is ${maxPayout} USDT. Max bet for these odds: ${maxAllowed} USDT`,
+      }, { status: 400 });
+    }
+
+    user.balance = parseFloat((user.balance - betAmount).toFixed(6));
     await user.save();
 
     const bet = await Bet.create({
       userId:     user._id,
-      amount,
+      amount:     betAmount,
       multiplier: odd,
       payout:     0,
       status:     'pending',
@@ -92,7 +108,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, bet, newBalance: user.balance });
+    return NextResponse.json({ success: true, bet, newBalance: user.balance, potentialPayout });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Bet error:', message);

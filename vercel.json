@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/autoclose",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
