@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Foxy Cash Casino | Crypto Casino & Sportsbook',
-  description: 'Crypto Casino & Sportsbook',
+  title: 'Bets Pro | Crypto Sportsbook',
+  description: 'The biggest football sportsbook. Real matches, real odds, instant USDT payouts.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
