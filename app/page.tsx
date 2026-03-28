@@ -1,7 +1,7 @@
 'use client';
 
 import Layout                  from '@/components/Layout';
-import { Trophy, ArrowRight, Zap } from 'lucide-react';
+import { Trophy, ArrowRight, Zap, Users } from 'lucide-react';
 import Link                    from 'next/link';
 import { useState, useEffect } from 'react';
 import Mascot                  from '@/components/Mascot';
@@ -16,40 +16,36 @@ export default function Home() {
         user:   `User${Math.floor(Math.random() * 9000) + 1000}`,
         amount: (Math.random() * 200 + 10).toFixed(2),
         team:   ['Real Madrid', 'Barcelona', 'Man City', 'PSG', 'Bayern'][i - 1],
-        odds:   (Math.random() * 3 + 1.2).toFixed(2),
+        odds:   (Math.random() * 2 + 1.2).toFixed(2),
       })),
     );
   }, []);
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-5">
+
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-background border border-white/5 p-6">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-accent/20 blur-3xl rounded-full" />
-          <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-secondary/20 blur-3xl rounded-full" />
-          <div className="relative z-10 flex items-start gap-4">
-            <Mascot className="w-20 h-20 flex-shrink-0 mt-1" />
-            <div>
-              <h1 className="text-3xl font-black tracking-tight mb-2">
-                Welcome to{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-secondary">
-                  Bets Pro
-                </span>
+        <div className="bg-surface border border-white/8 rounded-2xl p-5">
+          <div className="flex items-start gap-4">
+            <Mascot className="w-16 h-16 shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-black tracking-tight leading-tight">
+                The Biggest Football Sportsbook
               </h1>
-              <p className="text-gray-400 mb-5 text-sm font-medium">
-                Crypto sportsbook with instant USDT payouts. Bet on real matches, win big.
+              <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
+                Real matches. Real odds. Instant USDT payouts.
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2 mt-4">
                 <Link
                   href="/sports"
-                  className="bg-gradient-to-r from-accent to-accent text-white font-black px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 text-sm shadow-[0_0_15px_rgba(225,44,76,0.3)]"
+                  className="flex-1 bg-accent text-white font-black text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent/90 active:scale-95 transition-all"
                 >
-                  Bet Now <ArrowRight size={16} />
+                  Bet Now <ArrowRight size={15} />
                 </Link>
                 <Link
                   href="/wallet"
-                  className="bg-surface border border-white/10 text-white font-black px-5 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-sm"
+                  className="flex-1 bg-background border border-white/10 text-white font-black text-sm py-3 rounded-xl flex items-center justify-center hover:border-white/20 active:scale-95 transition-all"
                 >
                   Deposit
                 </Link>
@@ -58,63 +54,76 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Min Deposit', value: '10 USDT' },
-            { label: 'Min Withdraw', value: '10 USDT' },
-            { label: 'Referral Bonus', value: 'Up to 30%' },
+            { label: 'Min Deposit',  value: '10 USDT'   },
+            { label: 'Min Withdraw', value: '10 USDT'   },
+            { label: 'Referral',     value: 'Up to 30%' },
           ].map((s) => (
-            <div key={s.label} className="bg-surface rounded-2xl border border-white/5 p-3 text-center">
-              <p className="text-xs text-gray-400 font-bold mb-1">{s.label}</p>
-              <p className="font-black text-sm text-primary">{s.value}</p>
+            <div key={s.label} className="bg-surface border border-white/8 rounded-xl p-3 text-center">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
+              <p className="font-black text-sm text-primary mt-1">{s.value}</p>
             </div>
           ))}
         </div>
 
-        {/* Sportsbook banner */}
+        {/* Sportsbook CTA */}
         <Link
           href="/sports"
-          className="group relative overflow-hidden rounded-2xl bg-surface border border-white/5 p-5 flex items-center gap-4 hover:border-accent/50 transition-all block"
+          className="group bg-surface border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-accent/30 active:scale-[0.98] transition-all block"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-accent flex items-center justify-center shadow-[0_0_20px_rgba(225,44,76,0.3)] -rotate-3 group-hover:-rotate-6 transition-transform relative z-10">
-            <Trophy className="text-white" size={28} />
+          <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+            <Trophy className="text-accent" size={22} />
           </div>
-          <div className="relative z-10">
-            <h3 className="font-black text-lg tracking-wide">SPORTSBOOK</h3>
-            <p className="text-xs text-gray-400 font-medium">Real matches · Live odds · Instant settlement</p>
+          <div className="min-w-0">
+            <p className="font-black text-base">SPORTSBOOK</p>
+            <p className="text-xs text-gray-500 mt-0.5">Real matches · Live odds · Double chance markets</p>
           </div>
-          <ArrowRight className="ml-auto text-gray-600 group-hover:text-accent transition-colors relative z-10" />
+          <ArrowRight className="ml-auto text-gray-600 group-hover:text-white shrink-0 transition-colors" size={18} />
         </Link>
 
-        {/* Live feed */}
+        {/* Careers CTA */}
+        <Link
+          href="/careers"
+          className="group bg-surface border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-primary/30 active:scale-[0.98] transition-all block"
+        >
+          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+            <Users className="text-primary" size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-black text-base">WORK WITH US</p>
+            <p className="text-xs text-gray-500 mt-0.5">Community manager · Up to $1,000/mo</p>
+          </div>
+          <ArrowRight className="ml-auto text-gray-600 group-hover:text-white shrink-0 transition-colors" size={18} />
+        </Link>
+
+        {/* Live bets feed */}
         <div>
-          <h2 className="text-lg font-black mb-4 flex items-center gap-2 uppercase tracking-wider">
-            <Zap className="text-primary" size={20} /> Recent Bets
+          <h2 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+            <Zap size={14} className="text-primary" /> Recent Bets
           </h2>
-          <div className="bg-surface rounded-2xl border border-white/5 overflow-hidden">
-            <div className="divide-y divide-white/5">
-              {liveBets.map((bet) => (
-                <div key={bet.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center text-xs font-black text-accent">
-                      {bet.id}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">{bet.user}</p>
-                      <p className="text-xs text-gray-400">{bet.team} @ {bet.odds}</p>
-                    </div>
+          <div className="bg-surface border border-white/8 rounded-2xl overflow-hidden divide-y divide-white/5">
+            {liveBets.map((bet) => (
+              <div key={bet.id} className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-xs font-black text-accent shrink-0">
+                    {bet.id}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-primary">+{bet.amount} USDT</p>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Just now</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate">{bet.user}</p>
+                    <p className="text-xs text-gray-500 truncate">{bet.team} @ {bet.odds}</p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="text-right shrink-0 ml-2">
+                  <p className="text-sm font-black text-primary">+{bet.amount}</p>
+                  <p className="text-[10px] text-gray-600 uppercase font-bold">USDT</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+
       </div>
     </Layout>
   );

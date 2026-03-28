@@ -5,9 +5,13 @@ import Match              from '@/models/Match';
 import Bet                from '@/models/Bet';
 import User               from '@/models/User';
 
-// PATCH /api/admin/matches/[id]
-// Admin sets the display odds directly — exactly what users will see.
-// No margin calculation. The edge is built in by the admin choosing the numbers.
+// Which double-chance selections win for each result
+const DOUBLE_CHANCE_WINS: Record<string, string[]> = {
+  home: ['home', '1x', '12'],
+  draw: ['draw', '1x', 'x2'],
+  away: ['away', 'x2', '12'],
+};
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -19,42 +23,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { id }               = await params;
-    const { odds, status }     = await req.json();
+    const { id }           = await params;
+    const { odds, status } = await req.json();
 
-    if (
-      !odds ||
-      typeof odds.home !== 'number' ||
-      typeof odds.draw !== 'number' ||
-      typeof odds.away !== 'number'
-    ) {
-      return NextResponse.json(
-        { error: 'odds must include numeric home, draw and away' },
-        { status: 400 },
-      );
+    if (!odds || typeof odds.home !== 'number' || typeof odds.draw !== 'number' || typeof odds.away !== 'number') {
+      return NextResponse.json({ error: 'odds must include numeric home, draw and away' }, { status: 400 });
     }
 
     if ([odds.home, odds.draw, odds.away].some((o) => o < 1.01)) {
-      return NextResponse.json(
-        { error: 'All odds must be >= 1.01' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'All odds must be >= 1.01' }, { status: 400 });
     }
 
     const match = await Match.findByIdAndUpdate(
       id,
-      {
-        // Store the same value in both fields — admin controls display odds directly
-        trueOdds:    odds,
-        displayOdds: odds,
-        marginPct:   0,
-        ...(status ? { status } : {}),
-      },
+      { trueOdds: odds, displayOdds: odds, marginPct: 0, ...(status ? { status } : {}) },
       { new: true },
     );
 
     if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
-
     return NextResponse.json({ match });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -62,7 +48,6 @@ export async function PATCH(
   }
 }
 
-// POST /api/admin/matches/[id] — settle match and pay winners
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -82,21 +67,21 @@ export async function POST(
     }
 
     const match = await Match.findById(id);
-    if (!match)                  return NextResponse.json({ error: 'Match not found' }, { status: 404 });
+    if (!match)                     return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     if (match.status === 'settled') return NextResponse.json({ error: 'Match already settled' }, { status: 400 });
 
-    const bets = await Bet.find({ matchId: id, status: 'pending' });
+    const bets           = await Bet.find({ matchId: id, status: 'pending' });
+    const winningSelections = DOUBLE_CHANCE_WINS[result];
 
     let winnersCount = 0;
     let losersCount  = 0;
 
     for (const bet of bets) {
-      if (bet.selection === result) {
-        const payout = parseFloat((bet.amount * bet.multiplier).toFixed(6));
-        bet.payout   = payout;
-        bet.status   = 'won';
+      if (winningSelections.includes(bet.selection)) {
+        const payout   = parseFloat((bet.amount * bet.multiplier).toFixed(6));
+        bet.payout     = payout;
+        bet.status     = 'won';
         await bet.save();
-
         const user = await User.findById(bet.userId);
         if (user) {
           user.balance = parseFloat((user.balance + payout).toFixed(6));
@@ -121,7 +106,6 @@ export async function POST(
   }
 }
 
-// DELETE /api/admin/matches/[id] — delete and refund
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },

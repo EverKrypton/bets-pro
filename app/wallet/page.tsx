@@ -211,7 +211,7 @@ export default function WalletPage() {
               <CheckCircle2 size={16} className="text-yellow-400 mt-0.5 shrink-0" />
               <p className="text-xs text-gray-400 leading-relaxed">
                 <span className="text-yellow-400 font-bold">Minimum: 10 USDT · Fee: 1 USDT.</span>{' '}
-                Withdrawals are reviewed by admin and processed via OxaPay.
+                Withdrawals are processed within 24 hours.
               </p>
             </div>
 
