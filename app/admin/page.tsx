@@ -25,7 +25,7 @@ interface ExposureMatch {
   date: string; time: string; status: string;
   totalBets: number; totalStaked: number;
   breakdown: { home: number; draw: number; away: number; dc: number };
-  payouts: { ifHome: number; ifDraw: number; ifDraw: number; ifAway: number };
+  payouts: { ifHome: number; ifDraw: number; ifAway: number };
   profit: { ifHome: number; ifDraw: number; ifAway: number; worstCase: number };
   displayOdds: { home: number; draw: number; away: number } | null;
 }
