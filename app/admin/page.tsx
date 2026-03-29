@@ -25,7 +25,7 @@ interface ExposureMatch {
   date: string; time: string; status: string;
   totalBets: number; totalStaked: number;
   breakdown: { home: number; draw: number; away: number; dc: number };
-  payouts: { ifHome: number; ifDraw: number; ifAway: number };
+  payouts: { ifHome: number; ifDraw: number; ifDraw: number; ifAway: number };
   profit: { ifHome: number; ifDraw: number; ifAway: number; worstCase: number };
   displayOdds: { home: number; draw: number; away: number } | null;
 }
@@ -82,7 +82,7 @@ export default function AdminPage() {
   const [importMsg, setImportMsg]       = useState('');
 
   const [editingId, setEditingId]         = useState<string | null>(null);
-  const [oddsForm, setOddsForm]           = useState({ home: '', draw: '', away: '', status: 'open' });
+  const [oddsForm, setOddsForm]           = useState({ home: '', draw: '', away: '', status: 'open', moneyBack: false });
   const [settlingId, setSettlingId]       = useState<string | null>(null);
   const [settleResult, setSettleResult]   = useState<'home'|'draw'|'away'>('home');
   const [expandedApp, setExpandedApp]     = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function AdminPage() {
     if ([home,draw,away].some(o => isNaN(o) || o < 1.01)) { notify('All odds must be >= 1.01', false); return; }
     const res  = await fetch(`/api/admin/matches/${matchId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ odds: { home, draw, away }, status: oddsForm.status }),
+      body: JSON.stringify({ odds: { home, draw, away }, status: oddsForm.status, moneyBack: oddsForm.moneyBack }),
     });
     const data = await res.json();
     if (res.ok) { notify('Odds saved!', true); setEditingId(null); fetchMatches(); fetchExposure(); }
@@ -349,7 +349,7 @@ export default function AdminPage() {
                           onClick={() => {
                             if (editingId === match._id) { setEditingId(null); return; }
                             setEditingId(match._id);
-                            setOddsForm({ home: match.displayOdds?.home?.toString() ?? '', draw: match.displayOdds?.draw?.toString() ?? '', away: match.displayOdds?.away?.toString() ?? '', status: match.status });
+                            setOddsForm({ home: match.displayOdds?.home?.toString() ?? '', draw: match.displayOdds?.draw?.toString() ?? '', away: match.displayOdds?.away?.toString() ?? '', status: match.status, moneyBack: (match as any).moneyBack ?? false });
                           }}
                           className="flex-1 bg-background border border-white/8 text-xs font-black py-2 rounded-xl flex items-center justify-center gap-1 hover:border-white/20"
                         >
@@ -386,6 +386,16 @@ export default function AdminPage() {
                           </div>
                         ))}
                       </div>
+                      <label className="flex items-center gap-3 bg-background border border-white/8 rounded-xl px-4 py-3 cursor-pointer">
+                        <input type="checkbox" checked={oddsForm.moneyBack}
+                          onChange={e => setOddsForm({...oddsForm, moneyBack: e.target.checked})}
+                          className="w-4 h-4 accent-green-500"
+                        />
+                        <div>
+                          <p className="text-xs font-black text-white">💰 Money Back if they lose</p>
+                          <p className="text-[10px] text-gray-500">Losers get their stake refunded on settle</p>
+                        </div>
+                      </label>
                       <select value={oddsForm.status} onChange={e => setOddsForm({...oddsForm, status: e.target.value})}
                         className="w-full bg-background border border-white/8 rounded-lg px-3 py-2 text-sm font-bold outline-none"
                       >
@@ -517,6 +527,7 @@ export default function AdminPage() {
                 { key: 'maxBetAmount',       label: 'Max Bet (USDT)',           hint: 'Maximum per single bet' },
                 { key: 'maxPotentialPayout', label: 'Max Payout (USDT)',        hint: 'Max a user can win per bet' },
                 { key: 'autoCloseMinutes',   label: 'Auto-close (min before)',  hint: 'Minutes before kickoff to close bets' },
+                { key: 'liveScoreRefreshSecs', label: 'Live score refresh (sec)', hint: 'How often users poll live scores' },
                 { key: 'houseReserve',       label: 'House Reserve (USDT)',     hint: 'Your actual available USDT to pay winners' },
               ].map(({ key, label, hint }) => (
                 <div key={key}>
@@ -541,6 +552,16 @@ export default function AdminPage() {
                 </div>
               )}
 
+              <div>
+                <label className="text-xs font-bold text-gray-400 block mb-1">football-data.org API Key</label>
+                <p className="text-[10px] text-gray-600 mb-1.5">Free key from football-data.org for real-time scores (optional)</p>
+                <input type="text"
+                  value={(settingsForm as any).footballDataApiKey ?? ''}
+                  onChange={e => setSettingsForm({ ...settingsForm, footballDataApiKey: e.target.value } as any)}
+                  placeholder="paste your API key here"
+                  className="w-full bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm font-mono outline-none focus:border-accent/50"
+                />
+              </div>
               <button onClick={saveSettings} disabled={savingSettings}
                 className="w-full py-3 bg-accent text-white rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
               >

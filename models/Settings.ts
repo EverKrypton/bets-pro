@@ -1,14 +1,15 @@
 import mongoose from 'mongoose';
 
-// Single document — always upserted by key "global"
 const SettingsSchema = new mongoose.Schema(
   {
     key:                  { type: String, default: 'global', unique: true },
-    maxBetAmount:         { type: Number, default: 50    },  // USDT per bet
-    maxPotentialPayout:   { type: Number, default: 200   },  // USDT max win per bet
-    minBetAmount:         { type: Number, default: 1     },  // USDT
-    autoCloseMinutes:     { type: Number, default: 30    },  // minutes before match start
-    houseReserve:         { type: Number, default: 0     },  // admin tracks this manually
+    maxBetAmount:         { type: Number, default: 50   },
+    maxPotentialPayout:   { type: Number, default: 200  },
+    minBetAmount:         { type: Number, default: 1    },
+    autoCloseMinutes:     { type: Number, default: 30   },
+    houseReserve:         { type: Number, default: 0    },
+    footballDataApiKey:   { type: String, default: ''   }, // football-data.org free API key
+    liveScoreRefreshSecs: { type: Number, default: 30   }, // how often front-end polls
   },
   { timestamps: true },
 );

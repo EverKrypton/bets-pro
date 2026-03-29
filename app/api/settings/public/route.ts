@@ -5,13 +5,14 @@ import Settings         from '@/models/Settings';
 export async function GET() {
   try {
     await dbConnect();
-    const settings = await Settings.findOne({ key: 'global' });
+    const s = await Settings.findOne({ key: 'global' });
     return NextResponse.json({
-      minBetAmount:       settings?.minBetAmount       ?? 1,
-      maxBetAmount:       settings?.maxBetAmount       ?? 50,
-      maxPotentialPayout: settings?.maxPotentialPayout ?? 200,
+      minBetAmount:         s?.minBetAmount         ?? 1,
+      maxBetAmount:         s?.maxBetAmount         ?? 50,
+      maxPotentialPayout:   s?.maxPotentialPayout   ?? 200,
+      liveScoreRefreshSecs: s?.liveScoreRefreshSecs ?? 30,
     });
   } catch {
-    return NextResponse.json({ minBetAmount: 1, maxBetAmount: 50, maxPotentialPayout: 200 });
+    return NextResponse.json({ minBetAmount: 1, maxBetAmount: 50, maxPotentialPayout: 200, liveScoreRefreshSecs: 30 });
   }
 }

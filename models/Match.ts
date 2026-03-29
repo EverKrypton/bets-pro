@@ -21,6 +21,8 @@ const MatchSchema = new mongoose.Schema(
     displayOdds: { type: OddsSchema, default: () => ({}) },
     status:      { type: String, enum: ['pending','open','closed','settled'], default: 'pending' },
     result:      { type: String, enum: ['home','draw','away',null], default: null },
+    // Money-back: if enabled, losing bettors get their stake refunded automatically on settle
+    moneyBack:   { type: Boolean, default: false },
   },
   { timestamps: true, autoIndex: false },
 );
