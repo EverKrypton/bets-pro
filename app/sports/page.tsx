@@ -10,7 +10,9 @@ interface Match {
   _id: string; homeTeam: string; awayTeam: string;
   homeBadge: string; awayBadge: string;
   league: string; date: string; time: string;
-  displayOdds: Odds; status: 'open'|'closed';
+  displayOdds: Odds; status: 'open'|'closed'|'settled';
+  displayStatus?: 'open'|'closed'|'finished'|'settled';
+  result?: string|null;
   moneyBack?: boolean; apiId?: string;
 }
 interface LiveEvent {
@@ -347,7 +349,8 @@ export default function SportsPage() {
                   const valid   = hasOdds(match.displayOdds);
                   const dcOpen  = expandedDC[match._id]??false;
                   const live    = getLive(match);
-                  const closed  = match.status==='closed';
+                  const closed  = match.status==='closed' || match.displayStatus==='closed';
+                  const finished = match.displayStatus==='finished' || match.status==='settled';
 
                   return (
                     <div key={match._id} className={`transition-colors ${active?'bg-accent/5':''} ${closed?'opacity-80':''}`}>
@@ -372,11 +375,15 @@ export default function SportsPage() {
                               {live.minute&&<span className="text-red-400/70 text-[10px] font-bold">{live.minute}'</span>}
                             </div>
                           )}
-                          {closed && (
+                          {finished ? (
+                            <div className="flex items-center gap-1 bg-gray-500/10 text-gray-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-gray-500/20">
+                              ✓ {match.result ? `Ended: ${match.result.toUpperCase()}` : 'Finished'}
+                            </div>
+                          ) : closed ? (
                             <div className="flex items-center gap-1 bg-orange-500/10 text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-500/20">
                               <Lock size={9}/> Closed
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
 

@@ -26,8 +26,8 @@ export async function PATCH(req: Request) {
     if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const body    = await req.json();
-    const numKeys = ['maxBetAmount','maxPotentialPayout','minBetAmount','autoCloseMinutes','houseReserve','liveScoreRefreshSecs'];
-    const strKeys = ['footballDataApiKey'];
+    const numKeys = ['maxBetAmount','maxPotentialPayout','minBetAmount','autoCloseMinutes','houseReserve','liveScoreRefreshSecs','rubUsdRate'];
+    const strKeys = ['footballDataApiKey','rubBankDetails'];
     const update: Record<string, unknown> = {};
 
     for (const key of numKeys) {

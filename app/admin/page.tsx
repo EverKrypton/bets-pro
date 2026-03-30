@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Trash2, CheckCircle2,
   Settings, Briefcase, ExternalLink, TrendingUp,
   AlertTriangle, DollarSign, BarChart2, Clock, Save,
+  CreditCard,
 } from 'lucide-react';
 import { LEAGUES } from '@/lib/sports';
 
@@ -25,7 +26,7 @@ interface ExposureMatch {
   date: string; time: string; status: string;
   totalBets: number; totalStaked: number;
   breakdown: { home: number; draw: number; away: number; dc: number };
-  payouts: { ifHome: number; ifDraw: number; ifDraw: number; ifAway: number };
+  payouts: { ifHome: number; ifDraw: number; ifAway: number };
   profit: { ifHome: number; ifDraw: number; ifAway: number; worstCase: number };
   displayOdds: { home: number; draw: number; away: number } | null;
 }
