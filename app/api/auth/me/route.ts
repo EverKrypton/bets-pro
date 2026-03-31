@@ -5,7 +5,6 @@ import { getSessionUser } from '@/lib/session';
 export async function GET() {
   try {
     await dbConnect();
-
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -18,10 +17,10 @@ export async function GET() {
         balance:        user.balance,
         depositAddress: user.depositAddress,
         role:           user.role,
+        myReferralCode: user.myReferralCode ?? null,
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

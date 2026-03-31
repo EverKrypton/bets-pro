@@ -6,12 +6,12 @@ import {
   Shield, Check, X, Plus, RefreshCw, Trophy,
   ChevronDown, ChevronUp, Trash2, CheckCircle2,
   Settings, Briefcase, ExternalLink, AlertTriangle,
-  DollarSign, BarChart2, Clock, Save, CreditCard,
+  DollarSign, BarChart2, Clock, Save, CreditCard, Search,
 } from 'lucide-react';
 import { LEAGUES } from '@/lib/sports';
 
 type MatchStatus = 'pending' | 'open' | 'closed' | 'settled';
-type ActiveTab   = 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'applications';
+type ActiveTab   = 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'users' | 'applications';
 
 interface Match {
   _id: string; homeTeam: string; awayTeam: string; league: string;
@@ -42,6 +42,10 @@ interface RubDeposit {
   userId: { username: string; email: string };
   amountRub: number; amountUsd: number; rate: number; txRef: string;
   status: string; createdAt: string; adminNote: string;
+}
+interface AdminUser {
+  _id: string; email: string; username: string; balance: number;
+  role: 'user'|'admin'; myReferralCode: string|null; createdAt: string;
 }
 interface Application {
   _id: string; name: string; email: string; telegram: string;
@@ -96,6 +100,15 @@ export default function AdminPage() {
   const [autocloseMsg,    setAutocloseMsg]    = useState('');
   const [rubNoteId,       setRubNoteId]       = useState<string | null>(null);
   const [rubNote,         setRubNote]         = useState('');
+  const [users,           setUsers]           = useState<AdminUser[]>([]);
+  const [userSearch,      setUserSearch]      = useState('');
+  const [userTotal,       setUserTotal]       = useState(0);
+  const [userPage,        setUserPage]        = useState(1);
+  const [editingUser,     setEditingUser]     = useState<string|null>(null);
+  const [userRoleForm,    setUserRoleForm]    = useState<'user'|'admin'>('user');
+  const [userBalAdj,      setUserBalAdj]      = useState('');
+  const [userBalReason,   setUserBalReason]   = useState('');
+  const [savingUser,      setSavingUser]      = useState(false);
 
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
   const notify = (msg: string, ok: boolean) => {
@@ -126,6 +139,13 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/rub'); if (!res.ok) return;
     setRubDeposits((await res.json()).deposits ?? []);
   }, []);
+  const fetchUsers = useCallback(async (search='', page=1) => {
+    const qs = new URLSearchParams({ q: search, page: String(page) });
+    const res = await fetch(`/api/admin/users?${qs}`); if (!res.ok) return;
+    const data = await res.json();
+    setUsers(data.users ?? []); setUserTotal(data.total ?? 0);
+  }, []);
+
   const fetchApplications = useCallback(async () => {
     const res = await fetch('/api/admin/applications'); if (!res.ok) return;
     setApplications((await res.json()).applications ?? []);
@@ -140,11 +160,11 @@ export default function AdminPage() {
         if (data.user?.role === 'admin') {
           setIsAuthorized(true);
           fetchMatches(); fetchExposure(); fetchSettings();
-          fetchWithdrawals(); fetchRubDeposits(); fetchApplications();
+          fetchWithdrawals(); fetchRubDeposits(); fetchUsers(); fetchApplications();
         }
       } finally { setCheckingAuth(false); }
     })();
-  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchApplications]);
+  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchUsers, fetchApplications]);
 
   useEffect(() => {
     if (activeTab !== 'exposure') return;
@@ -221,6 +241,26 @@ export default function AdminPage() {
     fetchRubDeposits();
   };
 
+  const saveUser = async (userId: string) => {
+    setSavingUser(true);
+    const body: any = { userId, role: userRoleForm };
+    if (userBalAdj && !isNaN(parseFloat(userBalAdj))) {
+      body.balanceAdjust = parseFloat(userBalAdj);
+      body.reason = userBalReason || 'Admin adjustment';
+    }
+    const res  = await fetch('/api/admin/users', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    setSavingUser(false);
+    if (res.ok) {
+      notify('User updated!', true);
+      setEditingUser(null); setUserBalAdj(''); setUserBalReason('');
+      fetchUsers(userSearch, userPage);
+    } else notify(data.error || 'Failed', false);
+  };
+
   const handleApplication = async (id: string, status: 'approved' | 'rejected') => {
     const res  = await fetch('/api/admin/applications', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -278,6 +318,7 @@ export default function AdminPage() {
     { key: 'settings',     label: 'Limits',   icon: Settings                                          },
     { key: 'withdrawals',  label: 'Withdraw', icon: DollarSign, badge: pendingWdraw || undefined      },
     { key: 'rub',          label: 'RUB ₽',    icon: CreditCard, badge: pendingRub   || undefined      },
+    { key: 'users',        label: 'Users',    icon: Shield                                             },
     { key: 'applications', label: 'Jobs',     icon: Briefcase,  badge: pendingApps  || undefined      },
   ];
 
@@ -715,7 +756,129 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── APPLICATIONS ── */}
+
+        {/* ── USERS ── */}
+        {activeTab === 'users' && (
+          <div className="space-y-3">
+            {/* Search */}
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-3 py-2.5">
+                <Search size={14} className="text-gray-500 shrink-0"/>
+                <input
+                  type="text" value={userSearch}
+                  onChange={e => { setUserSearch(e.target.value); setUserPage(1); fetchUsers(e.target.value, 1); }}
+                  placeholder="Search by email, username or ref code..."
+                  className="flex-1 bg-transparent outline-none text-sm"
+                />
+              </div>
+              <button onClick={() => fetchUsers(userSearch, userPage)}
+                className="bg-surface border border-white/8 px-3 rounded-xl text-gray-400 hover:text-white"
+              ><RefreshCw size={14}/></button>
+            </div>
+            <p className="text-xs text-gray-600 font-bold">{userTotal} total users</p>
+
+            {users.length === 0
+              ? <p className="text-center text-gray-600 text-sm py-8">No users found</p>
+              : users.map(u => (
+                <div key={u._id} className="bg-surface border border-white/8 rounded-2xl overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-black text-sm truncate">{u.username || u.email}</p>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                            u.role==='admin' ? 'bg-accent/20 text-accent border-accent/40' : 'bg-surface border-white/8 text-gray-500'
+                          }`}>{u.role}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">{u.email}</p>
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <span className="text-[10px] text-gray-600 font-mono">ID: {u._id.slice(-8)}</span>
+                          {u.myReferralCode && (
+                            <span className="text-[10px] text-primary font-mono font-black">REF: {u.myReferralCode}</span>
+                          )}
+                          <span className="text-[10px] text-gray-600">Joined: {new Date(u.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-black text-accent">{u.balance.toFixed(2)}</p>
+                        <p className="text-[10px] text-gray-500">USDT</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (editingUser === u._id) { setEditingUser(null); return; }
+                        setEditingUser(u._id);
+                        setUserRoleForm(u.role);
+                        setUserBalAdj(''); setUserBalReason('');
+                      }}
+                      className="mt-3 w-full bg-background border border-white/8 text-xs font-black py-2 rounded-xl flex items-center justify-center gap-1 hover:border-white/20"
+                    >
+                      <Settings size={12}/> Edit {editingUser===u._id ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                    </button>
+                  </div>
+
+                  {editingUser === u._id && (
+                    <div className="border-t border-white/5 p-4 bg-background/20 space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-400 block mb-2">Role</label>
+                        <div className="flex gap-2">
+                          {(['user','admin'] as const).map(r => (
+                            <button key={r} onClick={() => setUserRoleForm(r)}
+                              className={`flex-1 py-2.5 rounded-xl font-black text-sm uppercase transition-all ${
+                                userRoleForm===r ? 'bg-accent text-white' : 'bg-background border border-white/8 text-gray-400 hover:text-white'
+                              }`}
+                            >{r}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-400 block mb-1.5">Balance Adjustment (USDT)</label>
+                        <p className="text-[10px] text-gray-600 mb-1.5">Positive = add funds, Negative = deduct. Leave blank to skip.</p>
+                        <div className="flex gap-2">
+                          <input type="number" value={userBalAdj} onChange={e => setUserBalAdj(e.target.value)}
+                            placeholder="e.g. 10 or -5"
+                            className="flex-1 bg-background border border-white/8 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-accent/50"
+                          />
+                          <input type="text" value={userBalReason} onChange={e => setUserBalReason(e.target.value)}
+                            placeholder="Reason (optional)"
+                            className="flex-1 bg-background border border-white/8 rounded-xl px-3 py-2 text-sm outline-none focus:border-accent/50"
+                          />
+                        </div>
+                        {userBalAdj && !isNaN(parseFloat(userBalAdj)) && (
+                          <p className={`text-xs font-bold mt-1.5 ${parseFloat(userBalAdj)>=0?'text-green-400':'text-red-400'}`}>
+                            New balance: {(u.balance + parseFloat(userBalAdj)).toFixed(2)} USDT
+                          </p>
+                        )}
+                      </div>
+                      <button onClick={() => saveUser(u._id)} disabled={savingUser}
+                        className="w-full py-2.5 bg-accent text-white rounded-xl font-black text-sm uppercase hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {savingUser ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Save size={13}/>}
+                        Save Changes
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+            {/* Pagination */}
+            {userTotal > 20 && (
+              <div className="flex gap-2 justify-center pt-2">
+                <button disabled={userPage<=1}
+                  onClick={() => { const p=userPage-1; setUserPage(p); fetchUsers(userSearch,p); }}
+                  className="px-4 py-2 bg-surface border border-white/8 rounded-xl text-xs font-black disabled:opacity-40 hover:bg-white/5"
+                >← Prev</button>
+                <span className="px-4 py-2 text-xs text-gray-500 font-bold">{userPage} / {Math.ceil(userTotal/20)}</span>
+                <button disabled={userPage>=Math.ceil(userTotal/20)}
+                  onClick={() => { const p=userPage+1; setUserPage(p); fetchUsers(userSearch,p); }}
+                  className="px-4 py-2 bg-surface border border-white/8 rounded-xl text-xs font-black disabled:opacity-40 hover:bg-white/5"
+                >Next →</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── APPLICATIONS ── */
         {activeTab === 'applications' && (
           <div className="space-y-3">
             {applications.length === 0

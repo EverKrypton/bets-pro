@@ -9,6 +9,12 @@ import {
   hashSessionToken,
 } from '@/lib/session';
 
+function generateReferralCode(userId: string): string {
+  // BP- + last 6 chars of mongo ObjectId = unique, short, human-friendly
+  const suffix = userId.toString().slice(-6).toUpperCase();
+  return `BP-${suffix}`;
+}
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
@@ -18,7 +24,6 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
-
     if (String(password).length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
@@ -26,9 +31,15 @@ export async function POST(req: Request) {
     const normalizedEmail = String(email).toLowerCase().trim();
     const adminEmail      = process.env.ADMIN_EMAIL?.toLowerCase().trim();
 
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing) {
+    if (await User.findOne({ email: normalizedEmail })) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
+    }
+
+    // Validate referrer code if provided
+    let validReferrerCode: string | null = null;
+    if (referrerCode) {
+      const referrer = await User.findOne({ myReferralCode: String(referrerCode).trim().toUpperCase() });
+      if (referrer) validReferrerCode = referrer.myReferralCode;
     }
 
     const passwordHash = await hashPassword(password);
@@ -38,9 +49,13 @@ export async function POST(req: Request) {
       passwordHash,
       username:     username?.trim() || normalizedEmail.split('@')[0],
       balance:      0,
-      referrerCode: referrerCode || null,
+      referrerCode: validReferrerCode,
       role:         adminEmail && normalizedEmail === adminEmail ? 'admin' : 'user',
     });
+
+    // Assign unique referral code based on their ObjectId
+    user.myReferralCode = generateReferralCode(user._id.toString());
+    await user.save();
 
     try {
       const oxaResponse   = await createStaticAddress(user._id.toString());
@@ -56,12 +71,13 @@ export async function POST(req: Request) {
     const res = NextResponse.json({
       success: true,
       user: {
-        id:             user._id,
-        email:          user.email,
-        username:       user.username,
-        balance:        user.balance,
-        depositAddress: user.depositAddress,
-        role:           user.role,
+        id:              user._id,
+        email:           user.email,
+        username:        user.username,
+        balance:         user.balance,
+        depositAddress:  user.depositAddress,
+        role:            user.role,
+        myReferralCode:  user.myReferralCode,
       },
     });
 

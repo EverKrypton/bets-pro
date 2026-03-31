@@ -1,40 +1,30 @@
 'use client';
 
-import Layout                  from '@/components/Layout';
+import Layout from '@/components/Layout';
 import { Trophy, ArrowRight, Zap, Users } from 'lucide-react';
-import Link                    from 'next/link';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import Mascot                  from '@/components/Mascot';
+import Mascot from '@/components/Mascot';
 
 interface RecentBet {
   _id: string;
-  details: { homeTeam: string; awayTeam: string; selection: string; odd: number; };
+  details: { homeTeam?: string; awayTeam?: string; selection?: string; odd?: number; };
   amount: number;
-  status: 'pending' | 'won' | 'lost' | 'refunded';
+  status: 'pending'|'won'|'lost'|'refunded';
 }
 
-const SEL_LABEL: Record<string, string> = {
-  home: 'Home', draw: 'Draw', away: 'Away',
-  '1x': '1X',   'x2': 'X2',  '12': '12',
+const SEL_LABEL: Record<string,string> = {
+  home:'Home', draw:'Draw', away:'Away', '1x':'1X', 'x2':'X2', '12':'12',
 };
-
-const STATUS_COLOR: Record<string, string> = {
-  won:      'text-green-400',
-  lost:     'text-red-400',
-  pending:  'text-yellow-400',
-  refunded: 'text-blue-400',
+const STATUS_COLOR: Record<string,string> = {
+  won:'text-green-400', lost:'text-red-400', pending:'text-yellow-400', refunded:'text-blue-400',
 };
 
 export default function Home() {
   const [recentBets, setRecentBets] = useState<RecentBet[]>([]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/bets/recent');
-        if (res.ok) setRecentBets((await res.json()).bets ?? []);
-      } catch { /* silent */ }
-    })();
+    fetch('/api/bets/recent').then(r => r.ok ? r.json() : { bets:[] }).then(d => setRecentBets(d.bets ?? [])).catch(()=>{});
   }, []);
 
   return (
@@ -46,12 +36,8 @@ export default function Home() {
           <div className="flex items-start gap-4">
             <Mascot className="w-16 h-16 shrink-0" />
             <div className="min-w-0">
-              <h1 className="text-2xl font-black tracking-tight leading-tight">
-                The Biggest Football Sportsbook
-              </h1>
-              <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
-                Real matches. Real odds. Instant USDT payouts.
-              </p>
+              <h1 className="text-2xl font-black tracking-tight leading-tight">The Biggest Football Sportsbook</h1>
+              <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Real matches. Real odds. Instant USDT payouts.</p>
               <div className="flex gap-2 mt-4">
                 <Link href="/sports"
                   className="flex-1 bg-accent text-white font-black text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent/90 active:scale-95 transition-all"
@@ -71,9 +57,9 @@ export default function Home() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Min Deposit',  value: '10 USDT'   },
-            { label: 'Min Withdraw', value: '10 USDT'   },
-            { label: 'Referral',     value: 'Up to 30%' },
+            { label:'Min Deposit',  value:'10 USDT'   },
+            { label:'Min Withdraw', value:'10 USDT'   },
+            { label:'Referral',     value:'Up to 30%' },
           ].map(s => (
             <div key={s.label} className="bg-surface border border-white/8 rounded-xl p-3 text-center">
               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
@@ -110,30 +96,31 @@ export default function Home() {
           <ArrowRight className="ml-auto text-gray-600 group-hover:text-white shrink-0 transition-colors" size={18} />
         </Link>
 
-        {/* Recent Bets — real data from DB */}
+        {/* Recent Bets — real DB data */}
         <div>
           <h2 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
             <Zap size={14} className="text-primary" /> Recent Bets
           </h2>
           <div className="bg-surface border border-white/8 rounded-2xl overflow-hidden divide-y divide-white/5">
-            {recentBets.length === 0 ? (
-              <p className="text-center text-gray-600 text-xs py-8">No bets placed yet — be the first!</p>
-            ) : recentBets.map(bet => (
-              <div key={bet._id} className="px-4 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold truncate">
-                    {bet.details?.homeTeam ?? '?'} vs {bet.details?.awayTeam ?? '?'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {SEL_LABEL[bet.details?.selection] ?? bet.details?.selection} · {Number(bet.details?.odd ?? 0).toFixed(2)}x
-                  </p>
+            {recentBets.length === 0
+              ? <p className="text-center text-gray-600 text-xs py-8">No bets placed yet — be the first!</p>
+              : recentBets.map(bet => (
+                <div key={bet._id} className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate">
+                      {bet.details?.homeTeam ?? '?'} vs {bet.details?.awayTeam ?? '?'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {SEL_LABEL[bet.details?.selection ?? ''] ?? bet.details?.selection ?? '?'} · {Number(bet.details?.odd ?? 0).toFixed(2)}x
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-black text-primary">{Number(bet.amount).toFixed(2)} USDT</p>
+                    <p className={`text-[10px] font-black uppercase ${STATUS_COLOR[bet.status] ?? 'text-gray-400'}`}>{bet.status}</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-primary">{Number(bet.amount).toFixed(2)} USDT</p>
-                  <p className={`text-[10px] font-black uppercase ${STATUS_COLOR[bet.status] ?? 'text-gray-400'}`}>{bet.status}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            }
           </div>
         </div>
 

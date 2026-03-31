@@ -7,7 +7,6 @@ const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
 const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
 const MIN_DEPOSIT  = 10;
 
-// OxaPay v1 payment callback types
 const PAYMENT_TYPES = new Set(['invoice','white_label','static_address','payment_link','donation']);
 
 function ok()  { return new Response('ok',    { status: 200 }); }
@@ -32,7 +31,6 @@ export async function POST(req: Request): Promise<Response> {
   const calculated = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
   if (calculated !== hmacHeader) { console.error('Webhook: HMAC mismatch'); return bad(); }
 
-  // ── Fields OxaPay sends ──────────────────────────────────────────────────
   const status   = (body.status   ?? body.payStatus)  as string;
   const track_id = (body.track_id ?? body.trackId)    as string;
   const order_id = (body.order_id ?? body.orderId)    as string | undefined;
@@ -50,7 +48,6 @@ export async function POST(req: Request): Promise<Response> {
     const user = await User.findById(userId);
     if (!user) { console.error('User not found', userId); return ok(); }
 
-    // Dedup
     if (await Transaction.findOne({ txId: track_id, type: 'deposit' })) return ok();
 
     user.balance = parseFloat((user.balance + amount).toFixed(6));
@@ -62,9 +59,9 @@ export async function POST(req: Request): Promise<Response> {
       details: { order_id, address: user.depositAddress, network: 'BSC' },
     });
 
-    // Referral bonus
+    // Referral bonus — look up referrer by myReferralCode
     if (user.referrerCode) {
-      const referrer = await User.findOne({ email: user.referrerCode });
+      const referrer = await User.findOne({ myReferralCode: user.referrerCode });
       if (referrer) {
         const bonus = amount >= 100 ? amount * 0.30 : amount * 0.05;
         referrer.balance = parseFloat((referrer.balance + bonus).toFixed(6));
