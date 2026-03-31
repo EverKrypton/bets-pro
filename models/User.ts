@@ -7,11 +7,14 @@ const UserSchema = new mongoose.Schema(
     username:         { type: String, default: '' },
     balance:          { type: Number, default: 0 },
     depositAddress:   { type: String, default: '' },
-    role:             { type: String, enum: ['user', 'admin'], default: 'user' },
+    // Roles:
+    //   user      — default, can bet and deposit
+    //   mod       — access to support/withdrawals/RUB deposits panel
+    //   recruiter — access to job applications panel
+    //   admin     — full access to everything
+    role:             { type: String, enum: ['user', 'mod', 'recruiter', 'admin'], default: 'user' },
     sessionTokenHash: { type: String, default: null },
-    // referrerCode = the code that was used when THIS user registered (who referred them)
-    referrerCode:     { type: String, default: null },
-    // myReferralCode = THIS user's unique invite code (shown in /referrals)
+    referrerCode:     { type: String, default: null },   // code used when they registered
     myReferralCode:   { type: String, default: null, unique: true, sparse: true },
   },
   { timestamps: true },

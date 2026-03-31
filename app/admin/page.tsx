@@ -45,7 +45,7 @@ interface RubDeposit {
 }
 interface AdminUser {
   _id: string; email: string; username: string; balance: number;
-  role: 'user'|'admin'; myReferralCode: string|null; createdAt: string;
+  role: 'user'|'mod'|'recruiter'|'admin'; myReferralCode: string|null; createdAt: string;
 }
 interface Application {
   _id: string; name: string; email: string; telegram: string;
@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [applications,  setApplications]  = useState<Application[]>([]);
 
   const [isAuthorized,  setIsAuthorized]  = useState(false);
+  const [currentRole,   setCurrentRole]   = useState<'user'|'mod'|'recruiter'|'admin'>('user');
   const [checkingAuth,  setCheckingAuth]  = useState(true);
   const [activeTab,     setActiveTab]     = useState<ActiveTab>('matches');
 
@@ -105,7 +106,7 @@ export default function AdminPage() {
   const [userTotal,       setUserTotal]       = useState(0);
   const [userPage,        setUserPage]        = useState(1);
   const [editingUser,     setEditingUser]     = useState<string|null>(null);
-  const [userRoleForm,    setUserRoleForm]    = useState<'user'|'admin'>('user');
+  const [userRoleForm,    setUserRoleForm]    = useState<'user'|'mod'|'recruiter'|'admin'>('user');
   const [userBalAdj,      setUserBalAdj]      = useState('');
   const [userBalReason,   setUserBalReason]   = useState('');
   const [savingUser,      setSavingUser]      = useState(false);
@@ -157,10 +158,21 @@ export default function AdminPage() {
         const res  = await fetch('/api/auth/me');
         if (!res.ok) return;
         const data = await res.json();
-        if (data.user?.role === 'admin') {
+        const r = data.user?.role;
+        if (r === 'admin' || r === 'mod' || r === 'recruiter') {
           setIsAuthorized(true);
-          fetchMatches(); fetchExposure(); fetchSettings();
-          fetchWithdrawals(); fetchRubDeposits(); fetchUsers(); fetchApplications();
+          setCurrentRole(r as any);
+          const role = data.user?.role;
+          if (role === 'admin') {
+            fetchMatches(); fetchExposure(); fetchSettings();
+            fetchWithdrawals(); fetchRubDeposits(); fetchUsers(); fetchApplications();
+          } else if (role === 'mod') {
+            fetchWithdrawals(); fetchRubDeposits();
+            setActiveTab('withdrawals');
+          } else if (role === 'recruiter') {
+            fetchApplications();
+            setActiveTab('applications');
+          }
         }
       } finally { setCheckingAuth(false); }
     })();
@@ -312,15 +324,22 @@ export default function AdminPage() {
   const pendingWdraw = withdrawals.length;
   const pendingRub   = rubDeposits.length;
 
-  const TABS: { key: ActiveTab; label: string; icon: any; badge?: number }[] = [
-    { key: 'matches',      label: 'Matches',  icon: Trophy                                            },
-    { key: 'exposure',     label: 'Exposure', icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
-    { key: 'settings',     label: 'Limits',   icon: Settings                                          },
-    { key: 'withdrawals',  label: 'Withdraw', icon: DollarSign, badge: pendingWdraw || undefined      },
-    { key: 'rub',          label: 'RUB ₽',    icon: CreditCard, badge: pendingRub   || undefined      },
-    { key: 'users',        label: 'Users',    icon: Shield                                             },
-    { key: 'applications', label: 'Jobs',     icon: Briefcase,  badge: pendingApps  || undefined      },
-  ];
+  const buildTabs = (): { key: ActiveTab; label: string; icon: any; badge?: number }[] => {
+    const all: { key: ActiveTab; label: string; icon: any; badge?: number }[] = [
+      { key: 'matches',      label: 'Matches',  icon: Trophy                                             },
+      { key: 'exposure',     label: 'Exposure', icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
+      { key: 'settings',     label: 'Limits',   icon: Settings                                           },
+      { key: 'withdrawals',  label: 'Support',  icon: DollarSign, badge: pendingWdraw || undefined       },
+      { key: 'rub',          label: 'RUB ₽',    icon: CreditCard, badge: pendingRub   || undefined       },
+      { key: 'users',        label: 'Users',    icon: Shield                                              },
+      { key: 'applications', label: 'Jobs',     icon: Briefcase,  badge: pendingApps  || undefined       },
+    ];
+    if (currentRole === 'admin')  return all;
+    if (currentRole === 'mod')       return all.filter(t => t.key === 'withdrawals' || t.key === 'rub');
+    if (currentRole === 'recruiter') return all.filter(t => t.key === 'applications');
+    return all;
+  };
+  const TABS = buildTabs();
 
   return (
     <Layout>
@@ -821,13 +840,21 @@ export default function AdminPage() {
                     <div className="border-t border-white/5 p-4 bg-background/20 space-y-3">
                       <div>
                         <label className="text-xs font-bold text-gray-400 block mb-2">Role</label>
-                        <div className="flex gap-2">
-                          {(['user','admin'] as const).map(r => (
-                            <button key={r} onClick={() => setUserRoleForm(r)}
-                              className={`flex-1 py-2.5 rounded-xl font-black text-sm uppercase transition-all ${
+                        <div className="grid grid-cols-2 gap-2">
+                          {([
+                            { r:'user',      desc:'Default — can bet & deposit'              },
+                            { r:'mod',       desc:'Support tickets & RUB deposits'           },
+                            { r:'recruiter', desc:'Job applications only'                    },
+                            { r:'admin',     desc:'Full access to everything'                },
+                          ] as const).map(({ r, desc }) => (
+                            <button key={r} onClick={() => setUserRoleForm(r as any)}
+                              className={`py-2.5 px-3 rounded-xl font-black text-xs uppercase transition-all text-left ${
                                 userRoleForm===r ? 'bg-accent text-white' : 'bg-background border border-white/8 text-gray-400 hover:text-white'
                               }`}
-                            >{r}</button>
+                            >
+                              <p>{r}</p>
+                              <p className={`text-[9px] font-medium mt-0.5 normal-case ${userRoleForm===r?'text-white/60':'text-gray-600'}`}>{desc}</p>
+                            </button>
                           ))}
                         </div>
                       </div>

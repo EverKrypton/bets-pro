@@ -8,19 +8,21 @@ import {
   hashSessionToken,
 } from '@/lib/session';
 
+function generateReferralCode(userId: string): string {
+  return `BP-${userId.toString().slice(-6).toUpperCase()}`;
+}
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
 
     const { email, password } = await req.json();
-
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const user            = await User.findOne({ email: normalizedEmail });
-
     if (!user || !user.passwordHash) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
@@ -30,10 +32,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Promote to admin after password check
+    // Promote to admin if matching ADMIN_EMAIL
     const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
     if (adminEmail && normalizedEmail === adminEmail && user.role !== 'admin') {
       user.role = 'admin';
+    }
+
+    // Auto-assign referral code if missing
+    if (!user.myReferralCode) {
+      user.myReferralCode = generateReferralCode(user._id.toString());
     }
 
     const sessionToken    = generateSessionToken();
@@ -49,6 +56,7 @@ export async function POST(req: Request) {
         balance:        user.balance,
         depositAddress: user.depositAddress,
         role:           user.role,
+        myReferralCode: user.myReferralCode,
       },
     });
 

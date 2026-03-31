@@ -2,6 +2,10 @@ import { NextResponse }   from 'next/server';
 import dbConnect          from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
 import User               from '@/models/User';
+import Transaction        from '@/models/Transaction';
+
+const VALID_ROLES = ['user', 'mod', 'recruiter', 'admin'] as const;
+type Role = typeof VALID_ROLES[number];
 
 export async function GET(req: Request) {
   try {
@@ -16,9 +20,9 @@ export async function GET(req: Request) {
 
     const query = search
       ? { $or: [
-          { email:    { $regex: search, $options: 'i' } },
-          { username: { $regex: search, $options: 'i' } },
-          { myReferralCode: { $regex: search, $options: 'i' } },
+          { email:           { $regex: search, $options: 'i' } },
+          { username:        { $regex: search, $options: 'i' } },
+          { myReferralCode:  { $regex: search, $options: 'i' } },
         ]}
       : {};
 
@@ -44,36 +48,44 @@ export async function PATCH(req: Request) {
     if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const { userId, role, balanceAdjust, reason } = await req.json();
-
     if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
     const user = await User.findById(userId);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (role && ['user', 'admin'].includes(role)) {
-      user.role = role;
+    if (role && VALID_ROLES.includes(role as Role)) {
+      user.role = role as Role;
     }
 
-    if (balanceAdjust !== undefined && !isNaN(parseFloat(balanceAdjust))) {
+    if (balanceAdjust !== undefined && balanceAdjust !== '' && !isNaN(parseFloat(balanceAdjust))) {
       const adj = parseFloat(balanceAdjust);
-      user.balance = parseFloat((user.balance + adj).toFixed(6));
-      // Log the adjustment as a transaction
-      const { default: Transaction } = await import('@/models/Transaction');
+      if (adj === 0) {
+        return NextResponse.json({ error: 'Balance adjustment cannot be 0' }, { status: 400 });
+      }
+      // Prevent negative balance
+      const newBalance = parseFloat((user.balance + adj).toFixed(6));
+      if (newBalance < 0) {
+        return NextResponse.json({ error: `Cannot deduct more than user's balance (${user.balance.toFixed(2)} USDT)` }, { status: 400 });
+      }
+      user.balance = newBalance;
       await Transaction.create({
         userId:   user._id,
-        type:     adj >= 0 ? 'deposit' : 'withdraw',
+        type:     adj > 0 ? 'deposit' : 'withdraw',
         amount:   Math.abs(adj),
         currency: 'USDT',
         status:   'completed',
-        details:  { method: 'admin_adjustment', reason: reason ?? 'Admin manual adjustment', adminId: admin._id },
+        details:  { method: 'admin_adjustment', reason: reason?.trim() || 'Admin manual adjustment', adminId: admin._id },
       });
     }
 
     await user.save();
-    return NextResponse.json({ success: true, user: {
-      _id: user._id, email: user.email, username: user.username,
-      balance: user.balance, role: user.role, myReferralCode: user.myReferralCode,
-    }});
+    return NextResponse.json({
+      success: true,
+      user: {
+        _id: user._id, email: user.email, username: user.username,
+        balance: user.balance, role: user.role, myReferralCode: user.myReferralCode,
+      },
+    });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
