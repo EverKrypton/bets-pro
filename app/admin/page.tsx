@@ -878,7 +878,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── APPLICATIONS ── */
+        {/* ── APPLICATIONS ── */}
         {activeTab === 'applications' && (
           <div className="space-y-3">
             {applications.length === 0
