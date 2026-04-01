@@ -134,6 +134,8 @@ export default function AdminPage() {
   const [notifIcon,      setNotifIcon]      = useState('📢');
   const [sendingNotif,   setSendingNotif]   = useState(false);
   const [sentNotifs,     setSentNotifs]     = useState<any[]>([]);
+  const [bulkOddsValue,  setBulkOddsValue]  = useState('');
+  const [applyingOdds,   setApplyingOdds]   = useState(false);
   const notify = (msg: string, ok: boolean) => {
     setFeedback({ msg, ok });
     setTimeout(() => setFeedback(null), 5000);
@@ -289,6 +291,30 @@ export default function AdminPage() {
     const data = await res.json();
     res.ok ? notify(data.message, true) : notify(data.error || 'Delete failed', false);
     fetchMatches(); fetchExposure();
+  };
+
+  const applyBulkOdds = async () => {
+    const baseOdds = parseFloat(bulkOddsValue);
+    if (!baseOdds || baseOdds < 1.1) { notify('Enter valid odds (min 1.1)', false); return; }
+    if (!confirm(`Set random odds around ${baseOdds}x for ALL open/pending matches?`)) return;
+    setApplyingOdds(true);
+    try {
+      const res = await fetch('/api/admin/bulk-odds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseOdds }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notify(`✓ Updated ${data.updated} matches with varied odds`, true);
+        setBulkOddsValue('');
+        fetchMatches();
+      } else {
+        notify(data.error || 'Failed', false);
+      }
+    } finally {
+      setApplyingOdds(false);
+    }
   };
 
   const handleWithdrawal = async (id: string, action: 'approve' | 'reject') => {
@@ -821,6 +847,31 @@ export default function AdminPage() {
                   className="w-full bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm font-mono outline-none focus:border-accent/50"
                 />
               </div>
+            </div>
+
+            {/* Bulk Odds */}
+            <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
+              <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <BarChart2 size={12} className="text-accent" /> Bulk Odds Setter
+              </p>
+              <p className="text-[10px] text-gray-500">
+                Set varied odds for ALL open/pending matches at once. Each match gets different odds (8-10% variance).
+              </p>
+              <div className="flex gap-2">
+                <input type="number" step="0.01" min="1.01" value={bulkOddsValue}
+                  onChange={e => setBulkOddsValue(e.target.value)}
+                  placeholder="Base odds (e.g. 2.50)"
+                  className="flex-1 bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-accent/50"
+                />
+                <button onClick={applyBulkOdds} disabled={applyingOdds}
+                  className="px-4 py-2.5 bg-primary text-background rounded-xl font-black text-sm uppercase hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {applyingOdds ? <span className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin"/> : 'Apply'}
+                </button>
+              </div>
+              <p className="text-[9px] text-gray-600">
+                Example: Enter 2.50 → home odds might be 2.35, draw 3.20, away 2.85 (varies per match)
+              </p>
             </div>
 
             <button onClick={saveSettings} disabled={savingSettings}
