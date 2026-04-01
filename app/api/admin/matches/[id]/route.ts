@@ -5,11 +5,43 @@ import Match              from '@/models/Match';
 import Bet                from '@/models/Bet';
 import User               from '@/models/User';
 
+// Result bet winners
 const WINS: Record<string, string[]> = {
   home: ['home', '1x', '12'],
   draw: ['draw', '1x', 'x2'],
   away: ['away', 'x2', '12'],
 };
+
+// Check if a goal bet wins based on scores
+function checkGoalBet(selection: string, homeScore: number, awayScore: number): boolean {
+  const total = homeScore + awayScore;
+  switch (selection) {
+    case 'homeOver05': return homeScore >= 1;
+    case 'homeOver15': return homeScore >= 2;
+    case 'homeUnder05': return homeScore === 0;
+    case 'awayOver05': return awayScore >= 1;
+    case 'awayOver15': return awayScore >= 2;
+    case 'awayUnder05': return awayScore === 0;
+    case 'totalOver15': return total >= 2;
+    case 'totalOver25': return total >= 3;
+    case 'totalUnder15': return total <= 1;
+    case 'totalUnder25': return total <= 2;
+    case 'bttsYes': return homeScore >= 1 && awayScore >= 1;
+    case 'bttsNo': return homeScore === 0 || awayScore === 0;
+    default: return false;
+  }
+}
+
+// Result bet selections
+const RESULT_SELECTIONS = ['home', 'draw', 'away', '1x', 'x2', '12'];
+
+// Goal bet selections
+const GOAL_SELECTIONS = [
+  'homeOver05', 'homeOver15', 'homeUnder05',
+  'awayOver05', 'awayOver15', 'awayUnder05',
+  'totalOver15', 'totalOver25', 'totalUnder15', 'totalUnder25',
+  'bttsYes', 'bttsNo',
+];
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,7 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const { id } = await params;
-    const { odds, status, moneyBack } = await req.json();
+    const { odds, goalOdds, status, moneyBack } = await req.json();
 
     const update: Record<string, unknown> = {};
 
@@ -30,6 +62,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       update.trueOdds    = odds;
       update.displayOdds = odds;
       update.marginPct   = 0;
+    }
+
+    if (goalOdds) {
+      update.goalOdds = goalOdds;
     }
 
     if (status)               update.status     = status;
@@ -49,8 +85,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const admin = await getSessionUser();
     if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-    const { id }     = await params;
-    const { result } = await req.json();
+    const { id } = await params;
+    const { result, homeScore, awayScore } = await req.json();
 
     if (!['home', 'draw', 'away'].includes(result))
       return NextResponse.json({ error: 'result must be: home | draw | away' }, { status: 400 });
@@ -58,6 +94,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const match = await Match.findById(id);
     if (!match)                     return NextResponse.json({ error: 'Match not found' }, { status: 404 });
     if (match.status === 'settled') return NextResponse.json({ error: 'Match already settled' }, { status: 400 });
+
+    // Store scores
+    const hScore = parseInt(homeScore) || 0;
+    const aScore = parseInt(awayScore) || 0;
 
     const bets           = await Bet.find({ matchId: id, status: 'pending' });
     const winningSelections = WINS[result];
@@ -68,7 +108,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     let refundedCount = 0;
 
     for (const bet of bets) {
-      const isWinner = winningSelections.includes(bet.selection);
+      // Check if it's a result bet or goal bet
+      const isResultBet = RESULT_SELECTIONS.includes(bet.selection);
+      const isGoalBet   = GOAL_SELECTIONS.includes(bet.selection);
+
+      let isWinner = false;
+
+      if (isResultBet) {
+        isWinner = winningSelections.includes(bet.selection);
+      } else if (isGoalBet) {
+        isWinner = checkGoalBet(bet.selection, hScore, aScore);
+      }
 
       if (isWinner) {
         // Winner: pay stake × odd
@@ -102,11 +152,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     match.result = result;
+    match.homeScore = hScore;
+    match.awayScore = aScore;
     match.status = 'settled';
     await match.save();
 
     return NextResponse.json({
-      message: `Settled: ${result}${useMoneyBack ? ' (Money Back enabled)' : ''}`,
+      message: `Settled: ${result} (${hScore}-${aScore})${useMoneyBack ? ' (Money Back enabled)' : ''}`,
       match, winnersCount, losersCount, refundedCount,
     });
   } catch (error: unknown) {

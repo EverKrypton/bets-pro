@@ -6,6 +6,12 @@ import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap } from 'lucide-
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Odds  { home: number; draw: number; away: number; }
+interface GoalOdds {
+  homeOver05?: number; homeOver15?: number; homeUnder05?: number;
+  awayOver05?: number; awayOver15?: number; awayUnder05?: number;
+  totalOver15?: number; totalOver25?: number; totalUnder15?: number; totalUnder25?: number;
+  bttsYes?: number; bttsNo?: number;
+}
 interface Match {
   _id: string; homeTeam: string; awayTeam: string;
   homeBadge: string; awayBadge: string;
@@ -13,6 +19,7 @@ interface Match {
   displayOdds: Odds; status: 'open'|'closed'|'settled';
   displayStatus?: 'open'|'closed'|'finished'|'settled';
   result?: string|null; moneyBack?: boolean; apiId?: string;
+  goalOdds?: GoalOdds;
 }
 interface LiveEvent {
   apiId: string; homeTeam: string; awayTeam: string;
@@ -28,6 +35,11 @@ const ML: Record<string,string> = { home:'1', draw:'X', away:'2', '1x':'1X', 'x2
 const MF: Record<string,string> = {
   home:'Home Win', draw:'Draw', away:'Away Win',
   '1x':'Home or Draw', 'x2':'Draw or Away', '12':'Home or Away',
+  // Goal bets
+  homeOver05:'Home 1+ Goals', homeOver15:'Home 2+ Goals', homeUnder05:'Home 0 Goals',
+  awayOver05:'Away 1+ Goals', awayOver15:'Away 2+ Goals', awayUnder05:'Away 0 Goals',
+  totalOver15:'Total 2+ Goals', totalOver25:'Total 3+ Goals', totalUnder15:'Total 0-1', totalUnder25:'Total 0-2',
+  bttsYes:'Both Score', bttsNo:'One Fails',
 };
 
 function dcOdd(o: Odds, m: '1x'|'x2'|'12'): number {
@@ -123,6 +135,7 @@ export default function SportsPage() {
   const [leagues,      setLeagues]      = useState<string[]>([]);
   const [activeLeague, setActiveLeague] = useState('All');
   const [expandedDC,   setExpandedDC]   = useState<Record<string,boolean>>({});
+  const [expandedGoals, setExpandedGoals] = useState<Record<string,boolean>>({});
   const [slip,         setSlip]         = useState<SlipItem|null>(null);
   const [amount,       setAmount]       = useState('');
   const [placing,      setPlacing]      = useState(false);
@@ -546,6 +559,76 @@ export default function SportsPage() {
                               </motion.div>
                             )}
                           </AnimatePresence>
+
+                          {/* Goal bets */}
+                          {!!match.goalOdds && Object.values(match.goalOdds).some(v => v && v > 1) && (
+                            <>
+                              <button
+                                onClick={() => setExpandedGoals(p => ({...p,[match._id]:!p[match._id]}))}
+                                className="w-full flex items-center justify-center gap-1 py-1 text-[9px] font-bold text-blue-400/70 hover:text-blue-400 transition-colors"
+                              >
+                                🎯 Goals {expandedGoals[match._id] ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+                              </button>
+                              <AnimatePresence>
+                                {expandedGoals[match._id] && (
+                                  <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}} className="space-y-1.5">
+                                    {/* Team Goals */}
+                                    <div className="text-[8px] text-gray-500 font-bold uppercase px-1">Team Goals</div>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      {[
+                                        { key: 'homeOver05', label: 'H 1+' },
+                                        { key: 'homeOver15', label: 'H 2+' },
+                                        { key: 'homeUnder05', label: 'H 0' },
+                                      ].map(g => (match.goalOdds as any)[g.key] > 1 && (
+                                        <OddBtn key={g.key} label={g.label} odd={(match.goalOdds as any)[g.key]}
+                                          active={active===g.key} disabled={closed||finished}
+                                          onClick={() => pick(match, g.key, (match.goalOdds as any)[g.key])}/>
+                                      ))}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      {[
+                                        { key: 'awayOver05', label: 'A 1+' },
+                                        { key: 'awayOver15', label: 'A 2+' },
+                                        { key: 'awayUnder05', label: 'A 0' },
+                                      ].map(g => (match.goalOdds as any)[g.key] > 1 && (
+                                        <OddBtn key={g.key} label={g.label} odd={(match.goalOdds as any)[g.key]}
+                                          active={active===g.key} disabled={closed||finished}
+                                          onClick={() => pick(match, g.key, (match.goalOdds as any)[g.key])}/>
+                                      ))}
+                                    </div>
+                                    {/* Total Goals */}
+                                    <div className="text-[8px] text-gray-500 font-bold uppercase px-1 mt-1.5">Total Goals</div>
+                                    <div className="grid grid-cols-4 gap-1">
+                                      {[
+                                        { key: 'totalOver15', label: 'O1.5' },
+                                        { key: 'totalOver25', label: 'O2.5' },
+                                        { key: 'totalUnder15', label: 'U1.5' },
+                                        { key: 'totalUnder25', label: 'U2.5' },
+                                      ].map(g => (match.goalOdds as any)[g.key] > 1 && (
+                                        <OddBtn key={g.key} label={g.label} odd={(match.goalOdds as any)[g.key]}
+                                          active={active===g.key} disabled={closed||finished}
+                                          onClick={() => pick(match, g.key, (match.goalOdds as any)[g.key])}/>
+                                      ))}
+                                    </div>
+                                    {/* BTTS */}
+                                    <div className="text-[8px] text-gray-500 font-bold uppercase px-1 mt-1.5">Both Teams Score</div>
+                                    <div className="grid grid-cols-2 gap-1">
+                                      {(match.goalOdds as any).bttsYes > 1 && (
+                                        <OddBtn label="Yes" odd={(match.goalOdds as any).bttsYes}
+                                          active={active==='bttsYes'} disabled={closed||finished}
+                                          onClick={() => pick(match, 'bttsYes', (match.goalOdds as any).bttsYes)}/>
+                                      )}
+                                      {(match.goalOdds as any).bttsNo > 1 && (
+                                        <OddBtn label="No" odd={(match.goalOdds as any).bttsNo}
+                                          active={active==='bttsNo'} disabled={closed||finished}
+                                          onClick={() => pick(match, 'bttsNo', (match.goalOdds as any).bttsNo)}/>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </>
+                          )}
                         </div>
                       )}
 

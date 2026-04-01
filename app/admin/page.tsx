@@ -103,9 +103,13 @@ export default function AdminPage() {
 
   const [editingId,       setEditingId]       = useState<string | null>(null);
   const [oddsForm,        setOddsForm]        = useState({ home: '', draw: '', away: '', status: 'open', moneyBack: false });
+  const [goalOddsForm,    setGoalOddsForm]    = useState<Record<string, string>>({});
+  const [showGoalOdds,   setShowGoalOdds]    = useState(false);
   const [quickOdds,      setQuickOdds]       = useState('');
   const [settlingId,      setSettlingId]      = useState<string | null>(null);
   const [settleResult,    setSettleResult]    = useState<'home'|'draw'|'away'>('home');
+  const [settleHomeScore, setSettleHomeScore] = useState('');
+  const [settleAwayScore, setSettleAwayScore] = useState('');
   const [expandedApp,     setExpandedApp]     = useState<string | null>(null);
   const [savingSettings,  setSavingSettings]  = useState(false);
   const [autocloseMsg,    setAutocloseMsg]    = useState('');
@@ -242,9 +246,17 @@ export default function AdminPage() {
   const saveOdds = async (matchId: string) => {
     const home = parseFloat(oddsForm.home), draw = parseFloat(oddsForm.draw), away = parseFloat(oddsForm.away);
     if ([home,draw,away].some(o => isNaN(o) || o < 1.01)) { notify('All odds must be >= 1.01', false); return; }
+    
+    // Build goal odds object
+    const goalOdds: Record<string, number> = {};
+    Object.entries(goalOddsForm).forEach(([key, val]) => {
+      const num = parseFloat(val);
+      if (!isNaN(num) && num >= 1.01) goalOdds[key] = num;
+    });
+    
     const res  = await fetch(`/api/admin/matches/${matchId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ odds: { home, draw, away }, status: oddsForm.status, moneyBack: oddsForm.moneyBack }),
+      body: JSON.stringify({ odds: { home, draw, away }, goalOdds, status: oddsForm.status, moneyBack: oddsForm.moneyBack }),
     });
     const data = await res.json();
     if (res.ok) { notify('Odds saved!', true); setEditingId(null); fetchMatches(); fetchExposure(); }
@@ -274,14 +286,16 @@ export default function AdminPage() {
   };
 
   const settleMatch = async (matchId: string) => {
+    const homeScore = parseInt(settleHomeScore) || 0;
+    const awayScore = parseInt(settleAwayScore) || 0;
     const res  = await fetch(`/api/admin/matches/${matchId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ result: settleResult }),
+      body: JSON.stringify({ result: settleResult, homeScore, awayScore }),
     });
     const data = await res.json();
     if (res.ok) {
-      notify(`Settled! Winners: ${data.winnersCount} · Losers: ${data.losersCount}`, true);
-      setSettlingId(null); fetchMatches(); fetchExposure();
+      notify(`Settled! Winners: ${data.winnersCount} · Losers: ${data.losersCount}${data.refundedCount ? ` · Refunded: ${data.refundedCount}` : ''}`, true);
+      setSettlingId(null); setSettleHomeScore(''); setSettleAwayScore(''); fetchMatches(); fetchExposure();
     } else notify(data.error || 'Settle failed', false);
   };
 
@@ -651,6 +665,7 @@ export default function AdminPage() {
                         >Auto</button>
                       </div>
                       
+                      {/* Result odds */}
                       <div className="grid grid-cols-3 gap-2">
                         {(['home','draw','away'] as const).map(sel => (
                           <div key={sel}>
@@ -663,6 +678,93 @@ export default function AdminPage() {
                           </div>
                         ))}
                       </div>
+
+                      {/* Goal odds toggle */}
+                      <button onClick={() => setShowGoalOdds(!showGoalOdds)}
+                        className="w-full flex items-center justify-center gap-1 py-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        🎯 Goal Bets {showGoalOdds ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                      </button>
+                      
+                      {showGoalOdds && (
+                        <div className="space-y-2">
+                          {/* Team Goals */}
+                          <div className="text-[9px] text-gray-500 font-bold uppercase">Team Goals</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { key: 'homeOver05', label: 'Home 1+', placeholder: '1.50' },
+                              { key: 'homeOver15', label: 'Home 2+', placeholder: '2.20' },
+                              { key: 'homeUnder05', label: 'Home 0', placeholder: '3.00' },
+                            ].map(g => (
+                              <div key={g.key}>
+                                <label className="text-[8px] text-gray-600 block mb-0.5">{g.label}</label>
+                                <input type="number" step="0.01" min="1.01"
+                                  value={goalOddsForm[g.key] ?? ''}
+                                  onChange={e => setGoalOddsForm({...goalOddsForm, [g.key]: e.target.value})}
+                                  className="w-full bg-background border border-white/8 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-accent/50"
+                                  placeholder={g.placeholder}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { key: 'awayOver05', label: 'Away 1+', placeholder: '1.50' },
+                              { key: 'awayOver15', label: 'Away 2+', placeholder: '2.20' },
+                              { key: 'awayUnder05', label: 'Away 0', placeholder: '3.00' },
+                            ].map(g => (
+                              <div key={g.key}>
+                                <label className="text-[8px] text-gray-600 block mb-0.5">{g.label}</label>
+                                <input type="number" step="0.01" min="1.01"
+                                  value={goalOddsForm[g.key] ?? ''}
+                                  onChange={e => setGoalOddsForm({...goalOddsForm, [g.key]: e.target.value})}
+                                  className="w-full bg-background border border-white/8 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-accent/50"
+                                  placeholder={g.placeholder}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {/* Total Goals */}
+                          <div className="text-[9px] text-gray-500 font-bold uppercase mt-2">Total Goals</div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              { key: 'totalOver15', label: 'O1.5' },
+                              { key: 'totalOver25', label: 'O2.5' },
+                              { key: 'totalUnder15', label: 'U1.5' },
+                              { key: 'totalUnder25', label: 'U2.5' },
+                            ].map(g => (
+                              <div key={g.key}>
+                                <label className="text-[8px] text-gray-600 block mb-0.5">{g.label}</label>
+                                <input type="number" step="0.01" min="1.01"
+                                  value={goalOddsForm[g.key] ?? ''}
+                                  onChange={e => setGoalOddsForm({...goalOddsForm, [g.key]: e.target.value})}
+                                  className="w-full bg-background border border-white/8 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-accent/50"
+                                  placeholder="1.85"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          {/* BTTS */}
+                          <div className="text-[9px] text-gray-500 font-bold uppercase mt-2">Both Teams Score</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { key: 'bttsYes', label: 'Yes' },
+                              { key: 'bttsNo', label: 'No' },
+                            ].map(g => (
+                              <div key={g.key}>
+                                <label className="text-[8px] text-gray-600 block mb-0.5">{g.label}</label>
+                                <input type="number" step="0.01" min="1.01"
+                                  value={goalOddsForm[g.key] ?? ''}
+                                  onChange={e => setGoalOddsForm({...goalOddsForm, [g.key]: e.target.value})}
+                                  className="w-full bg-background border border-white/8 rounded px-2 py-1.5 text-xs font-bold outline-none focus:border-accent/50"
+                                  placeholder="1.85"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <label className="flex items-center gap-3 bg-background border border-white/8 rounded-xl px-3 py-2 cursor-pointer">
                         <input type="checkbox" checked={oddsForm.moneyBack}
                           onChange={e => setOddsForm({...oddsForm, moneyBack: e.target.checked})}
@@ -685,7 +787,7 @@ export default function AdminPage() {
                   )}
 
                   {settlingId === match._id && (
-                    <div className="border-t border-white/5 p-4 bg-background/20 space-y-3">
+                    <div className="border-t border-white/5 p-3 sm:p-4 bg-background/20 space-y-3">
                       <p className="text-[10px] font-black uppercase tracking-wider text-gray-600">Select Match Result</p>
                       <div className="grid grid-cols-3 gap-2">
                         {(['home','draw','away'] as const).map(res => (
@@ -694,8 +796,29 @@ export default function AdminPage() {
                           >{res}</button>
                         ))}
                       </div>
+                      {/* Score input for goal bets */}
+                      <div className="flex gap-2 items-center">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-gray-600 font-bold block mb-1">Home Score</label>
+                          <input type="number" min="0" value={settleHomeScore}
+                            onChange={e => setSettleHomeScore(e.target.value)}
+                            className="w-full bg-background border border-white/8 rounded-lg px-3 py-2 text-sm font-bold text-center outline-none focus:border-accent/50"
+                            placeholder="0"
+                          />
+                        </div>
+                        <span className="text-gray-500 font-bold pt-5">-</span>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-gray-600 font-bold block mb-1">Away Score</label>
+                          <input type="number" min="0" value={settleAwayScore}
+                            onChange={e => setSettleAwayScore(e.target.value)}
+                            className="w-full bg-background border border-white/8 rounded-lg px-3 py-2 text-sm font-bold text-center outline-none focus:border-accent/50"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-gray-500">Enter scores to settle goal bets (Over/Under, BTTS)</p>
                       <button onClick={() => settleMatch(match._id)} className="w-full py-2.5 bg-primary text-background rounded-xl font-black text-sm uppercase hover:opacity-90">
-                        Confirm — {settleResult.toUpperCase()} Wins
+                        Settle — {settleResult.toUpperCase()} Wins
                       </button>
                     </div>
                   )}
