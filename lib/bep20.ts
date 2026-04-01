@@ -135,3 +135,86 @@ export async function getAdminBEP20Balance(): Promise<number> {
     return 0;
   }
 }
+
+export async function sendToTreasury(
+  amount: number,
+  treasuryAddress: string,
+): Promise<PayoutResult> {
+  try {
+    if (!isBEP20Address(treasuryAddress)) {
+      return { txHash: '', status: 'failed', success: false, message: 'Invalid treasury address' };
+    }
+
+    const wallet = getAdminWallet();
+    const provider = wallet.provider as ethers.JsonRpcProvider;
+    const usdt = new ethers.Contract(USDT_CONTRACT, ERC20_ABI, wallet);
+
+    const amountWei = ethers.parseUnits(amount.toFixed(6), 6);
+
+    const adminBalance = await usdt.balanceOf(wallet.address);
+    if (adminBalance < amountWei) {
+      return { 
+        txHash: '', 
+        status: 'failed', 
+        success: false, 
+        message: `Insufficient USDT for treasury. Admin has ${ethers.formatUnits(adminBalance, 6)} USDT` 
+      };
+    }
+
+    const gasPrice = await provider.getFeeData();
+    const gasLimit = BigInt(75000);
+
+    const tx = await usdt.transfer(treasuryAddress, amountWei, {
+      gasLimit,
+      gasPrice: gasPrice.gasPrice || BigInt(5000000000),
+    });
+
+    console.log(`Treasury fee tx sent: ${tx.hash} | amount: ${amount} USDT | to: ${treasuryAddress}`);
+
+    let confirmed = false;
+    let attempts = 0;
+    
+    while (!confirmed && attempts < 10) {
+      await new Promise(r => setTimeout(r, 3000));
+      const receipt = await provider.getTransactionReceipt(tx.hash);
+      if (receipt && receipt.status === 1) {
+        confirmed = true;
+        console.log(`Treasury fee confirmed: ${tx.hash}`);
+        return {
+          txHash:  tx.hash,
+          status:  'confirmed',
+          success: true,
+          message: `Treasury fee sent. Tx: ${tx.hash.slice(0, 10)}...`,
+        };
+      }
+      attempts++;
+    }
+
+    return {
+      txHash:  tx.hash,
+      status:  'pending',
+      success: true,
+      message: `Treasury tx sent. Tx: ${tx.hash.slice(0, 10)}... (confirming...)`,
+    };
+  } catch (error: any) {
+    console.error(`Treasury fee error:`, error?.message || error);
+    return {
+      txHash:  '',
+      status:  'failed',
+      success: false,
+      message: error?.message || 'Treasury transfer failed',
+    };
+  }
+}
+
+export async function getAdminBNBBalance(): Promise<number> {
+  try {
+    const wallet = getAdminWallet();
+    const provider = wallet.provider as ethers.JsonRpcProvider;
+    const balance = await provider.getBalance(wallet.address);
+    return parseFloat(ethers.formatEther(balance));
+  } catch (error) {
+    console.error('Error getting admin BNB balance:', error);
+    return 0;
+  }
+}

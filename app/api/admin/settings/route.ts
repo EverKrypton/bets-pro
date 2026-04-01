@@ -27,7 +27,7 @@ export async function PATCH(req: Request) {
 
     const body    = await req.json();
     const numKeys = ['maxBetAmount','maxPotentialPayout','minBetAmount','autoCloseMinutes','houseReserve','liveScoreRefreshSecs','rubUsdRate','minDepositAmount'];
-    const strKeys = ['footballDataApiKey','rubBankDetails'];
+    const strKeys = ['footballDataApiKey','rubBankDetails','treasuryWalletAddress'];
     const update: Record<string, unknown> = {};
 
     for (const key of numKeys) {

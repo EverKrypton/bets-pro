@@ -35,7 +35,7 @@ interface HouseSettings {
   maxBetAmount: number; maxPotentialPayout: number; minBetAmount: number;
   autoCloseMinutes: number; houseReserve: number; liveScoreRefreshSecs: number;
   footballDataApiKey: string; rubUsdRate: number; rubBankDetails: string;
-  minDepositAmount: number;
+  minDepositAmount: number; treasuryWalletAddress: string;
 }
 interface Withdrawal {
   _id: string; userId: { username: string; email: string }; amount: number;
@@ -71,6 +71,18 @@ interface DashboardStats {
   fees: { withdrawal: number };
   bets: { total: number; pending: number; won: number; lost: number; refunded: number; totalStaked: number; totalPayout: number; wonPayout: number; refundedTotal: number };
   matches: { open: number; closed: number; settled: number };
+  activeBets: {
+    total: number;
+    totalStaked: number;
+    resultBets: { home: number; draw: number; away: number; doubleChance: number; totalStaked: number };
+    goalBets: { total: number; totalStaked: number; breakdown: Record<string, number> };
+    scenarios: {
+      ifHomeWins: { payout: number; profit: number };
+      ifDraw: { payout: number; profit: number };
+      ifAwayWins: { payout: number; profit: number };
+    };
+    worstCase: number;
+  };
   houseProfit: { withdrawalFees: number; note: string };
 }
 
@@ -91,7 +103,7 @@ const SETTINGS_DEFAULTS: HouseSettings = {
   maxBetAmount: 50, maxPotentialPayout: 200, minBetAmount: 1,
   autoCloseMinutes: 30, houseReserve: 0, liveScoreRefreshSecs: 30,
   footballDataApiKey: '', rubUsdRate: 90, rubBankDetails: '',
-  minDepositAmount: 10,
+  minDepositAmount: 10, treasuryWalletAddress: '',
 };
 
 export default function AdminPage() {
@@ -686,6 +698,109 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Active Bets Analysis */}
+                {stats.activeBets && stats.activeBets.total > 0 && (
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BarChart2 size={14} className="text-primary"/>
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Active Bets ({stats.activeBets.total} pending)</p>
+                    </div>
+                    
+                    {/* Total Staked */}
+                    <div className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-3 mb-3">
+                      <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Total at Risk</p>
+                      <p className="text-3xl font-black text-white">{stats.activeBets.totalStaked.toFixed(2)} USDT</p>
+                      <p className="text-[10px] text-gray-500 mt-1">Money currently in play across all open matches</p>
+                    </div>
+
+                    {/* Distribution */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-background border border-white/8 rounded-xl p-3">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase mb-2">Result Bets</p>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Home:</span>
+                            <span className="font-bold">{stats.activeBets.resultBets.home.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Draw:</span>
+                            <span className="font-bold">{stats.activeBets.resultBets.draw.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">Away:</span>
+                            <span className="font-bold">{stats.activeBets.resultBets.away.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-400">DC:</span>
+                            <span className="font-bold">{stats.activeBets.resultBets.doubleChance.toFixed(2)}</span>
+                          </div>
+                          <div className="pt-1.5 border-t border-white/10 flex justify-between text-sm">
+                            <span className="text-gray-200 font-bold">Total:</span>
+                            <span className="font-black text-primary">{stats.activeBets.resultBets.totalStaked.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-background border border-white/8 rounded-xl p-3">
+                        <p className="text-[9px] text-gray-500 font-bold uppercase mb-2">Goal Bets</p>
+                        {stats.activeBets.goalBets.total === 0 ? (
+                          <p className="text-sm text-gray-600">No goal bets</p>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {Object.entries(stats.activeBets.goalBets.breakdown).map(([sel, amt]) => (
+                                <span key={sel} className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
+                                  {sel}: {(amt as number).toFixed(0)}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="pt-1.5 border-t border-white/10 flex justify-between text-sm">
+                              <span className="text-gray-200 font-bold">Total:</span>
+                              <span className="font-black text-blue-400">{stats.activeBets.goalBets.totalStaked.toFixed(2)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Scenarios Table */}
+                    <div className="bg-background border border-white/8 rounded-xl overflow-hidden">
+                      <div className="px-3 py-2 border-b border-white/5 bg-gradient-to-r from-surface to-background">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Ganancia/Pérdida según resultado</p>
+                      </div>
+                      <div className="divide-y divide-white/5">
+                        {[
+                          { label: 'Home Wins', profit: stats.activeBets.scenarios.ifHomeWins.profit, payout: stats.activeBets.scenarios.ifHomeWins.payout },
+                          { label: 'Draw', profit: stats.activeBets.scenarios.ifDraw.profit, payout: stats.activeBets.scenarios.ifDraw.payout },
+                          { label: 'Away Wins', profit: stats.activeBets.scenarios.ifAwayWins.profit, payout: stats.activeBets.scenarios.ifAwayWins.payout },
+                        ].map(row => (
+                          <div key={row.label} className="flex items-center justify-between px-3 py-2.5">
+                            <div className="flex-1">
+                              <p className="text-sm font-bold">{row.label}</p>
+                              <p className="text-[9px] text-gray-500">pay {row.payout.toFixed(2)} USDT</p>
+                            </div>
+                            <div className={`text-lg font-black ${row.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {row.profit >= 0 ? '+' : ''}{row.profit.toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Worst Case Alert */}
+                    {stats.activeBets.worstCase < 0 && (
+                      <div className="mt-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={16} className="text-red-400 shrink-0"/>
+                          <div>
+                            <p className="text-sm font-bold text-red-400">Worst Case: {stats.activeBets.worstCase.toFixed(2)} USDT</p>
+                            <p className="text-[10px] text-red-300 mt-0.5">Máximo que podrías perder si todos los resultados adversos pasan</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Matches Status */}
                 <div className="bg-surface border border-white/8 rounded-2xl p-4">
                   <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Matches Status</p>
@@ -1157,6 +1272,28 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Treasury Wallet */}
+            <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
+              <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <Wallet size={12} className="text-accent" /> Treasury Wallet
+              </p>
+              <p className="text-[10px] text-gray-500">
+                USDT withdrawal fees ($1 per withdrawal) are automatically sent to this BEP20 address when approved.
+              </p>
+              <div>
+                <label className="text-xs font-bold text-gray-400 block mb-1">Treasury BEP20 Address</label>
+                <input type="text"
+                  value={settingsForm.treasuryWalletAddress ?? ''}
+                  onChange={e => setSettingsForm({ ...settingsForm, treasuryWalletAddress: e.target.value.trim() })}
+                  placeholder="0x..."
+                  className="w-full bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm font-mono outline-none focus:border-accent/50"
+                />
+                <p className="text-[9px] text-gray-600 mt-1">
+                  Leave empty to disable automatic fee transfers. Fees will stay in system balance.
+                </p>
+              </div>
+            </div>
+
             {/* Bulk Odds */}
             <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
               <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
@@ -1200,10 +1337,11 @@ export default function AdminPage() {
                 { label:'Reserve',      value:`${houseSettings.houseReserve} USDT` },
                 { label:'RUB rate',     value:`${houseSettings.rubUsdRate} ₽ = 1 USDT` },
                 { label:'Bank details', value:houseSettings.rubBankDetails || '⚠️ Not set' },
+                { label:'Treasury',     value:houseSettings.treasuryWalletAddress ? `${houseSettings.treasuryWalletAddress.slice(0,6)}...${houseSettings.treasuryWalletAddress.slice(-4)}` : '⚠️ Not set' },
               ].map(r => (
                 <div key={r.label} className="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">
                   <span className="text-xs text-gray-500 font-bold">{r.label}</span>
-                  <span className={`text-xs font-black ${r.label==='Bank details'&&!houseSettings.rubBankDetails?'text-yellow-400':'text-white'} max-w-[60%] truncate text-right`}>{r.value}</span>
+                  <span className={`text-xs font-black ${(r.label==='Bank details'&&!houseSettings.rubBankDetails)||(r.label==='Treasury'&&!houseSettings.treasuryWalletAddress)?'text-yellow-400':'text-white'} max-w-[60%] truncate text-right`}>{r.value}</span>
                 </div>
               ))}
             </div>

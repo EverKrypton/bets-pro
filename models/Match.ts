@@ -48,7 +48,7 @@ const MatchSchema = new mongoose.Schema(
     homeScore:   { type: Number, default: null },
     awayScore:   { type: Number, default: null },
     // Money-back: if enabled, losing bettors get their stake refunded automatically on settle
-    moneyBack:   { type: Boolean, default: true },
+    moneyBack:   { type: Boolean, default: false },
   },
   { timestamps: true, autoIndex: false },
 );

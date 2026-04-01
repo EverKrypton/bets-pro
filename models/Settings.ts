@@ -10,9 +10,10 @@ const SettingsSchema = new mongoose.Schema(
     houseReserve:         { type: Number, default: 0    },
     footballDataApiKey:   { type: String, default: ''   },
     liveScoreRefreshSecs: { type: Number, default: 30   },
-    rubUsdRate:           { type: Number, default: 90   }, // RUB per 1 USDT
-    rubBankDetails:       { type: String, default: ''   }, // card number / bank account shown to users
-    minDepositAmount:     { type: Number, default: 10   }, // minimum USDT deposit
+    rubUsdRate:           { type: Number, default: 90   },
+    rubBankDetails:       { type: String, default: ''   },
+    minDepositAmount:     { type: Number, default: 10   },
+    treasuryWalletAddress:{ type: String, default: ''   },
   },
   { timestamps: true },
 );

@@ -6,6 +6,20 @@ import Bet from '@/models/Bet';
 import Transaction from '@/models/Transaction';
 import Match from '@/models/Match';
 
+const WINS: Record<string, string[]> = {
+  home: ['home', '1x', '12'],
+  draw: ['draw', '1x', 'x2'],
+  away: ['away', 'x2', '12'],
+};
+
+const RESULT_SELECTIONS = ['home', 'draw', 'away', '1x', 'x2', '12'];
+const GOAL_SELECTIONS = [
+  'homeOver05', 'homeOver15', 'homeUnder05',
+  'awayOver05', 'awayOver15', 'awayUnder05',
+  'totalOver15', 'totalOver25', 'totalUnder15', 'totalUnder25',
+  'bttsYes', 'bttsNo',
+];
+
 export async function GET() {
   try {
     await dbConnect();
@@ -14,7 +28,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // User stats
     const totalUsers = await User.countDocuments();
     const usersWithBalance = await User.countDocuments({ balance: { $gt: 0 } });
     const totalUserBalance = await User.aggregate([
@@ -22,7 +35,6 @@ export async function GET() {
     ]);
     const userBalance = totalUserBalance[0]?.total || 0;
 
-    // Deposit stats
     const depositStats = await Transaction.aggregate([
       { $match: { type: 'deposit', status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
@@ -30,7 +42,6 @@ export async function GET() {
     const totalDeposited = depositStats[0]?.total || 0;
     const depositCount = depositStats[0]?.count || 0;
 
-    // Withdrawal stats
     const withdrawStats = await Transaction.aggregate([
       { $match: { type: 'withdraw', status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
@@ -38,7 +49,6 @@ export async function GET() {
     const totalWithdrawn = withdrawStats[0]?.total || 0;
     const withdrawCount = withdrawStats[0]?.count || 0;
 
-    // Pending withdrawals
     const pendingWithdrawals = await Transaction.countDocuments({ type: 'withdraw', status: 'pending' });
     const pendingWithdrawalAmount = await Transaction.aggregate([
       { $match: { type: 'withdraw', status: 'pending' } },
@@ -46,10 +56,8 @@ export async function GET() {
     ]);
     const pendingWithdrawTotal = pendingWithdrawalAmount[0]?.total || 0;
 
-    // Withdrawal fees (1 USDT per withdrawal)
     const withdrawalFees = withdrawCount * 1;
 
-    // Bet stats
     const totalBets = await Bet.countDocuments();
     const pendingBets = await Bet.countDocuments({ status: 'pending' });
     const wonBets = await Bet.countDocuments({ status: 'won' });
@@ -62,47 +70,125 @@ export async function GET() {
     const totalStaked = betAmounts[0]?.totalStaked || 0;
     const totalPayout = betAmounts[0]?.totalPayout || 0;
 
-    // Won bets payout (money actually paid to winners)
     const wonPayouts = await Bet.aggregate([
       { $match: { status: 'won' } },
       { $group: { _id: null, total: { $sum: '$payout' } } },
     ]);
     const wonPayout = wonPayouts[0]?.total || 0;
 
-    // Refunded amounts
     const refundedAmounts = await Bet.aggregate([
       { $match: { status: 'refunded' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const refundedTotal = refundedAmounts[0]?.total || 0;
 
-    // Match stats
     const openMatches = await Match.countDocuments({ status: 'open' });
     const closedMatches = await Match.countDocuments({ status: 'closed' });
     const settledMatches = await Match.countDocuments({ status: 'settled' });
 
-    // House profit calculation
-    // Money in: deposits + fees
-    // Money out: withdrawals + payouts + refunds
-    // But user balance is money owed to users
-    // House profit = deposits - withdrawals - payouts - (user balance increase)
+    // ===== ACTIVE BETS ANALYSIS =====
+    const pendingBetsList = await Bet.find({ status: 'pending' }).populate('matchId');
     
-    // Simplified: fees are the only direct income
-    // Margins are built into payouts already
-    
-    const houseProfit = {
-      withdrawalFees,
-      netFlow: totalDeposited - totalWithdrawn - wonPayout - refundedTotal,
+    const activeBets = {
+      total: pendingBets,
+      totalStaked: 0,
+      resultBets: {
+        home: 0,
+        draw: 0,
+        away: 0,
+        doubleChance: 0,
+        totalStaked: 0,
+      },
+      goalBets: {
+        total: 0,
+        totalStaked: 0,
+        breakdown: {} as Record<string, number>,
+      },
+      scenarios: {
+        ifHomeWins: { payout: 0, profit: 0 },
+        ifDraw: { payout: 0, profit: 0 },
+        ifAwayWins: { payout: 0, profit: 0 },
+      },
+      worstCase: 0,
     };
 
-    // Recent activity
+    // Calculate totals
+    for (const bet of pendingBetsList) {
+      activeBets.totalStaked += bet.amount;
+      
+      if (RESULT_SELECTIONS.includes(bet.selection)) {
+        activeBets.resultBets.totalStaked += bet.amount;
+        if (bet.selection === 'home') activeBets.resultBets.home += bet.amount;
+        else if (bet.selection === 'draw') activeBets.resultBets.draw += bet.amount;
+        else if (bet.selection === 'away') activeBets.resultBets.away += bet.amount;
+        else activeBets.resultBets.doubleChance += bet.amount;
+      } else if (GOAL_SELECTIONS.includes(bet.selection)) {
+        activeBets.goalBets.totalStaked += bet.amount;
+        activeBets.goalBets.breakdown[bet.selection] = (activeBets.goalBets.breakdown[bet.selection] || 0) + bet.amount;
+      }
+    }
+
+    // Calculate payouts per scenario
+    // Worst case: sum of max payments across ALL matches (assuming goal bets always win for worst case)
+    
+    // Group bets by match
+    const betsByMatch = new Map<string, typeof pendingBetsList>();
+    for (const bet of pendingBetsList) {
+      const matchId = (bet.matchId as any)?._id?.toString() ||bet.matchId?.toString();
+      if (!matchId) continue;
+      if (!betsByMatch.has(matchId)) betsByMatch.set(matchId, []);
+      betsByMatch.get(matchId)!.push(bet as any);
+    }
+
+    let totalWorstCase = 0;
+
+    for (const [matchId, bets] of betsByMatch) {
+      const resultBets = bets.filter(b => RESULT_SELECTIONS.includes(b.selection));
+      const goalBets = bets.filter(b => GOAL_SELECTIONS.includes(b.selection));
+      
+      const matchStake = bets.reduce((s, b) => s + b.amount, 0);
+      
+      // Goal bets worst case: all win
+      const goalMaxPayout = goalBets.reduce((s, b) => s + b.amount *b.multiplier, 0);
+      
+      // Result bets payouts per scenario
+      const payIfHome = resultBets.filter(b => WINS.home.includes(b.selection)).reduce((s, b) => s + b.amount *b.multiplier, 0);
+      const payIfDraw = resultBets.filter(b => WINS.draw.includes(b.selection)).reduce((s, b) => s + b.amount *b.multiplier, 0);
+      const payIfAway = resultBets.filter(b => WINS.away.includes(b.selection)).reduce((s, b) => s + b.amount *b.multiplier, 0);
+      
+      // Total payout per scenario (result + goal worst case)
+      const totalPayIfHome = payIfHome + goalMaxPayout;
+      const totalPayIfDraw = payIfDraw + goalMaxPayout;
+      const totalPayIfAway = payIfAway + goalMaxPayout;
+      
+      // Profit per scenario
+      const profitIfHome = matchStake - totalPayIfHome;
+      const profitIfDraw = matchStake - totalPayIfDraw;
+      const profitIfAway = matchStake - totalPayIfAway;
+      
+      // Accumulate scenarios
+      activeBets.scenarios.ifHomeWins.payout += totalPayIfHome;
+      activeBets.scenarios.ifDraw.payout += totalPayIfDraw;
+      activeBets.scenarios.ifAwayWins.payout += totalPayIfAway;
+      
+      // Worst case for this match
+      const matchWorstCase = Math.min(profitIfHome, profitIfDraw, profitIfAway);
+      totalWorstCase += matchWorstCase;
+    }
+    
+    // Calculate profits
+    activeBets.scenarios.ifHomeWins.profit = activeBets.totalStaked - activeBets.scenarios.ifHomeWins.payout;
+    activeBets.scenarios.ifDraw.profit = activeBets.totalStaked - activeBets.scenarios.ifDraw.payout;
+    activeBets.scenarios.ifAwayWins.profit = activeBets.totalStaked - activeBets.scenarios.ifAwayWins.payout;
+    activeBets.worstCase = totalWorstCase;
+
     const recentDeposits = await Transaction.find({ type: 'deposit' })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate('userId', 'username email');
 
     const recentWithdrawals = await Transaction.find({ type: 'withdraw' })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1})
       .limit(5)
       .populate('userId', 'username email');
 
@@ -146,9 +232,40 @@ export async function GET() {
         closed: closedMatches,
         settled: settledMatches,
       },
+      activeBets: {
+        total: activeBets.total,
+        totalStaked: parseFloat(activeBets.totalStaked.toFixed(2)),
+        resultBets: {
+          home: parseFloat(activeBets.resultBets.home.toFixed(2)),
+          draw: parseFloat(activeBets.resultBets.draw.toFixed(2)),
+          away: parseFloat(activeBets.resultBets.away.toFixed(2)),
+          doubleChance: parseFloat(activeBets.resultBets.doubleChance.toFixed(2)),
+          totalStaked: parseFloat(activeBets.resultBets.totalStaked.toFixed(2)),
+        },
+        goalBets: {
+          total: activeBets.goalBets.total,
+          totalStaked: parseFloat(activeBets.goalBets.totalStaked.toFixed(2)),
+          breakdown: activeBets.goalBets.breakdown,
+        },
+        scenarios: {
+          ifHomeWins: {
+            payout: parseFloat(activeBets.scenarios.ifHomeWins.payout.toFixed(2)),
+            profit: parseFloat(activeBets.scenarios.ifHomeWins.profit.toFixed(2)),
+          },
+          ifDraw: {
+            payout: parseFloat(activeBets.scenarios.ifDraw.payout.toFixed(2)),
+            profit: parseFloat(activeBets.scenarios.ifDraw.profit.toFixed(2)),
+          },
+          ifAwayWins: {
+            payout: parseFloat(activeBets.scenarios.ifAwayWins.payout.toFixed(2)),
+            profit: parseFloat(activeBets.scenarios.ifAwayWins.profit.toFixed(2)),
+          },
+        },
+        worstCase: parseFloat(activeBets.worstCase.toFixed(2)),
+      },
       houseProfit: {
         withdrawalFees,
-        note: 'Fees de retiro son ganancia directa. Margen en cuotas está en cada apuesta.',
+        netFlow: totalDeposited - totalWithdrawn - wonPayout - refundedTotal,
       },
       recent: {
         deposits: recentDeposits,

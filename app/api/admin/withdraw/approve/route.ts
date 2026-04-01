@@ -3,7 +3,10 @@ import dbConnect           from '@/lib/db';
 import { getSessionUser }  from '@/lib/session';
 import User                from '@/models/User';
 import Transaction         from '@/models/Transaction';
-import { sendBEP20Payout } from '@/lib/bep20';
+import Settings            from '@/models/Settings';
+import { sendBEP20Payout, sendToTreasury } from '@/lib/bep20';
+
+const FEE = 1;
 
 export async function POST(req: Request) {
   try {
@@ -26,7 +29,7 @@ export async function POST(req: Request) {
     }
 
     if (action === 'approve') {
-      const details = transaction.details as { address: string; network: string; grossAmount?: number };
+      const details = transaction.details as { address: string; network: string; grossAmount?: number; fee?: number };
       const address = details.address;
       const amount = transaction.amount;
 
@@ -41,9 +44,26 @@ export async function POST(req: Request) {
       }
 
       transaction.txId   = result.txHash;
-      transaction.status  = 'completed';
+      transaction.status = 'completed';
       transaction.details = { ...details, bep20TxHash: result.txHash };
       await transaction.save();
+
+      const settings = await Settings.findOne({ key: 'global' });
+      const treasuryAddress = settings?.treasuryWalletAddress;
+
+      if (treasuryAddress && /^0x[a-fA-F0-9]{40}$/.test(treasuryAddress)) {
+        const treasuryResult = await sendToTreasury(FEE, treasuryAddress);
+        if (treasuryResult.success) {
+          transaction.details = { 
+            ...transaction.details as object, 
+            treasuryTxHash: treasuryResult.txHash,
+            feeSent: FEE 
+          };
+          await transaction.save();
+        } else {
+          console.error('Treasury fee failed:', treasuryResult.message);
+        }
+      }
 
       return NextResponse.json({ 
         success: true, 
