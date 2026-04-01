@@ -3,7 +3,7 @@ import dbConnect           from '@/lib/db';
 import { getSessionUser }  from '@/lib/session';
 import User                from '@/models/User';
 import Transaction         from '@/models/Transaction';
-import { createPayout }    from '@/lib/oxapay';
+import { sendBEP20Payout } from '@/lib/bep20';
 
 export async function POST(req: Request) {
   try {
@@ -28,32 +28,41 @@ export async function POST(req: Request) {
     if (action === 'approve') {
       const details = transaction.details as { address: string; network: string; grossAmount?: number };
       const address = details.address;
-      const network = details.network || 'BEP20';
+      const amount = transaction.amount;
 
-      // transaction.amount = net amount (after 1 USDT fee already deducted)
-      const oxaResponse = await createPayout(
+      const result = await sendBEP20Payout(
         address,
-        transaction.amount,   // number — OxaPay requires decimal, not string
-        network,
-        `Bets Pro withdrawal tx ${transactionId}`,
+        amount,
+        transactionId,
       );
 
-      transaction.txId   = oxaResponse.data.track_id;
-      transaction.status = 'completed';
+      if (!result.success) {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+
+      transaction.txId   = result.txHash;
+      transaction.status  = 'completed';
+      transaction.details = { ...details, bep20TxHash: result.txHash };
       await transaction.save();
+
+      return NextResponse.json({ 
+        success: true, 
+        transaction,
+        message: result.message,
+      });
     } else {
       transaction.status = 'rejected';
       await transaction.save();
 
       const user = await User.findById(transaction.userId);
       if (user) {
-        const gross      = parseFloat(((transaction.details as any)?.grossAmount ?? transaction.amount).toString());
-        user.balance     = parseFloat((user.balance + gross).toFixed(6));
+        const gross = parseFloat(((transaction.details as any)?.grossAmount ?? transaction.amount).toString());
+        user.balance = parseFloat((user.balance + gross).toFixed(6));
         await user.save();
       }
-    }
 
-    return NextResponse.json({ success: true, transaction });
+      return NextResponse.json({ success: true, transaction });
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Withdraw approve error:', message);

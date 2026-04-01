@@ -372,8 +372,6 @@ export default function WalletPage() {
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none font-bold text-sm focus:border-accent/50"
               >
                 <option value="BEP20">BNB Smart Chain (BEP20)</option>
-                <option value="TRC20">TRON (TRC20)</option>
-                <option value="ERC20">Ethereum (ERC20)</option>
               </select>
             </div>
 
