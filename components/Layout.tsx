@@ -362,7 +362,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto w-full">{children}</div>
+        </main>
       </div>
 
       {/* Bottom nav - mobile only */}
