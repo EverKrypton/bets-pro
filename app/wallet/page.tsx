@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import {
   ArrowDownToLine, ArrowUpFromLine, Copy, CheckCircle2,
-  Loader2, Clock, CreditCard, Info, Send,
+  Loader2, Clock, CreditCard, Info, Send, KeyRound,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -18,7 +18,7 @@ const STATUS_COLOR: Record<string,string> = {
 };
 
 export default function WalletPage() {
-  const [activeTab, setActiveTab]           = useState<'deposit'|'rub'|'withdraw'|'history'>('deposit');
+  const [activeTab, setActiveTab]           = useState<'deposit'|'rub'|'withdraw'|'history'|'security'>('deposit');
   const [amount, setAmount]                 = useState('');
   const [address, setAddress]               = useState('');
   const [network, setNetwork]               = useState('BEP20');
@@ -32,8 +32,12 @@ export default function WalletPage() {
   const [feedback, setFeedback]             = useState<{msg:string;ok:boolean}|null>(null);
   const [rubRate, setRubRate]               = useState(90);
   const [rubBankDetails, setRubBankDetails] = useState('');
-  const [rubSubmitted, setRubSubmitted]     = useState(false);
+  const [rubSubmitted,  setRubSubmitted]     = useState(false);
   const [rubUsdPreview, setRubUsdPreview]   = useState(0);
+  const [curPass,       setCurPass]         = useState('');
+  const [newPass,       setNewPass]         = useState('');
+  const [confPass,      setConfPass]        = useState('');
+  const [changingPass,  setChangingPass]    = useState(false);
 
   useEffect(() => { fetchMe(); fetchHistory(); fetchPublicSettings(); }, []);
 
@@ -115,6 +119,22 @@ export default function WalletPage() {
     } finally { setLoading(false); }
   };
 
+  const handleChangePassword = async () => {
+    if (!curPass || !newPass || !confPass) { notify('All fields required', false); return; }
+    if (newPass !== confPass)              { notify('Passwords do not match', false); return; }
+    if (newPass.length < 8)               { notify('Min 8 characters', false); return; }
+    setChangingPass(true);
+    try {
+      const res  = await fetch('/api/auth/change-password', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ currentPassword: curPass, newPassword: newPass }),
+      });
+      const data = await res.json();
+      if (res.ok) { notify('Password changed successfully!', true); setCurPass(''); setNewPass(''); setConfPass(''); }
+      else        { notify(data.error || 'Failed', false); }
+    } finally { setChangingPass(false); }
+  };
+
   const rubPreview = rubAmount && Number(rubAmount) >= 500
     ? (Number(rubAmount) / rubRate).toFixed(2) : null;
 
@@ -126,6 +146,7 @@ export default function WalletPage() {
     { key: 'rub',      label: 'RUB ₽',   icon: CreditCard      },
     { key: 'withdraw', label: 'Withdraw', icon: ArrowUpFromLine },
     { key: 'history',  label: 'History',  icon: Clock           },
+    { key: 'security', label: 'Security', icon: KeyRound        },
   ] as const;
 
   return (
@@ -383,6 +404,47 @@ export default function WalletPage() {
               className="w-full py-3.5 rounded-xl bg-surface border border-white/10 text-white font-black text-sm uppercase tracking-wider hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? <><Loader2 size={16} className="animate-spin"/> Submitting...</> : 'Request Withdrawal'}
+            </button>
+          </motion.div>
+        )}
+
+        {/* Security */}
+        {activeTab === 'security' && (
+          <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
+            <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
+              <KeyRound size={12} className="text-accent"/> Change Password
+            </p>
+            <div>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Current Password</label>
+              <input type="password" value={curPass} onChange={e => setCurPass(e.target.value)}
+                className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none text-sm focus:border-accent/50 transition-colors"
+                placeholder="Your current password"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">New Password</label>
+              <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
+                className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none text-sm focus:border-accent/50 transition-colors"
+                placeholder="At least 8 characters"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Confirm New Password</label>
+              <input type="password" value={confPass} onChange={e => setConfPass(e.target.value)}
+                className={`w-full bg-background border rounded-xl px-4 py-3 outline-none text-sm transition-colors ${
+                  confPass && confPass !== newPass ? 'border-red-500/50' : 'border-white/8 focus:border-accent/50'
+                }`}
+                placeholder="Repeat new password"
+              />
+              {confPass && confPass !== newPass && (
+                <p className="text-[10px] text-red-400 font-bold mt-1 pl-1">Passwords do not match</p>
+              )}
+            </div>
+            <button onClick={handleChangePassword}
+              disabled={changingPass || !curPass || !newPass || !confPass || newPass !== confPass}
+              className="w-full py-3.5 rounded-xl bg-accent text-white font-black text-sm uppercase tracking-wider hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {changingPass ? <><Loader2 size={15} className="animate-spin"/> Changing...</> : 'Update Password'}
             </button>
           </motion.div>
         )}

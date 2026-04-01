@@ -7,11 +7,12 @@ import {
   ChevronDown, ChevronUp, Trash2, CheckCircle2,
   Settings, Briefcase, ExternalLink, AlertTriangle,
   DollarSign, BarChart2, Clock, Save, CreditCard, Search, Menu,
+  MessageSquare, Bell, Send,
 } from 'lucide-react';
 import { LEAGUES } from '@/lib/sports';
 
 type MatchStatus = 'pending' | 'open' | 'closed' | 'settled';
-type ActiveTab   = 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'users' | 'applications';
+type ActiveTab   = 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'users' | 'applications' | 'support' | 'notifications';
 
 interface Match {
   _id: string; homeTeam: string; awayTeam: string; league: string;
@@ -52,6 +53,12 @@ interface Application {
   instagram: string; tiktok: string; twitter: string; youtube: string;
   totalFollowers: string; description: string; motivation: string;
   status: 'pending' | 'approved' | 'rejected'; createdAt: string;
+}
+
+interface SupportTicket {
+  _id: string; username: string; subject: string; status: 'open'|'pending'|'closed';
+  messages: { senderRole: string; senderName: string; body: string; createdAt: string }[];
+  lastReplyAt: string; readByMod: boolean; createdAt: string;
 }
 
 const STATUS_COLOR: Record<MatchStatus, string> = {
@@ -112,7 +119,18 @@ export default function AdminPage() {
   const [savingUser,      setSavingUser]      = useState(false);
 
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [menuOpen,      setMenuOpen]      = useState(false);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [activeTicket,   setActiveTicket]   = useState<SupportTicket|null>(null);
+  const [supportFilter,  setSupportFilter]  = useState<'open'|'pending'|'closed'|'all'>('open');
+  const [ticketReply,    setTicketReply]    = useState('');
+  const [sendingReply,   setSendingReply]   = useState(false);
+  const [openTicketCount,setOpenTicketCount] = useState(0);
+  const [notifTitle,     setNotifTitle]     = useState('');
+  const [notifBody,      setNotifBody]      = useState('');
+  const [notifIcon,      setNotifIcon]      = useState('📢');
+  const [sendingNotif,   setSendingNotif]   = useState(false);
+  const [sentNotifs,     setSentNotifs]     = useState<any[]>([]);
   const notify = (msg: string, ok: boolean) => {
     setFeedback({ msg, ok });
     setTimeout(() => setFeedback(null), 5000);
@@ -153,6 +171,18 @@ export default function AdminPage() {
     setApplications((await res.json()).applications ?? []);
   }, []);
 
+  const fetchSupport = useCallback(async (status='open') => {
+    const res = await fetch(`/api/admin/support?status=${status}`); if (!res.ok) return;
+    const data = await res.json();
+    setSupportTickets(data.tickets ?? []);
+    setOpenTicketCount(data.openCount ?? 0);
+  }, []);
+
+  const fetchSentNotifs = useCallback(async () => {
+    const res = await fetch('/api/admin/notifications'); if (!res.ok) return;
+    setSentNotifs((await res.json()).notifications ?? []);
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -167,9 +197,10 @@ export default function AdminPage() {
           if (role === 'admin') {
             fetchMatches(); fetchExposure(); fetchSettings();
             fetchWithdrawals(); fetchRubDeposits(); fetchUsers(); fetchApplications();
+            fetchSupport(); fetchSentNotifs();
           } else if (role === 'mod') {
-            fetchWithdrawals(); fetchRubDeposits();
-            setActiveTab('withdrawals');
+            fetchWithdrawals(); fetchRubDeposits(); fetchSupport();
+            setActiveTab('support');
           } else if (role === 'recruiter') {
             fetchApplications();
             setActiveTab('applications');
@@ -177,7 +208,7 @@ export default function AdminPage() {
         }
       } finally { setCheckingAuth(false); }
     })();
-  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchUsers, fetchApplications]);
+  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchUsers, fetchApplications, fetchSupport, fetchSentNotifs]);
 
   useEffect(() => {
     if (activeTab !== 'exposure') return;
@@ -186,8 +217,10 @@ export default function AdminPage() {
   }, [activeTab, fetchExposure]);
 
   useEffect(() => {
-    if (activeTab === 'rub') fetchRubDeposits();
-  }, [activeTab, fetchRubDeposits]);
+    if (activeTab === 'rub')           fetchRubDeposits();
+    if (activeTab === 'support')       fetchSupport(supportFilter);
+    if (activeTab === 'notifications') fetchSentNotifs();
+  }, [activeTab, fetchRubDeposits, fetchSupport, fetchSentNotifs, supportFilter]);
 
   const importMatches = async () => {
     setImporting(true); setImportMsg('');
@@ -274,6 +307,40 @@ export default function AdminPage() {
     } else notify(data.error || 'Failed', false);
   };
 
+  const sendTicketReply = async (ticketId: string) => {
+    if (!ticketReply.trim()) return;
+    setSendingReply(true);
+    const res  = await fetch(`/api/admin/support/${ticketId}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ body: ticketReply.trim() }),
+    });
+    const data = await res.json();
+    setSendingReply(false);
+    if (res.ok) { setTicketReply(''); setActiveTicket(data.ticket); fetchSupport(supportFilter); }
+    else notify(data.error || 'Failed', false);
+  };
+
+  const changeTicketStatus = async (ticketId: string, status: string) => {
+    const res = await fetch(`/api/admin/support/${ticketId}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) { const d = await res.json(); setActiveTicket(d.ticket); fetchSupport(supportFilter); }
+  };
+
+  const sendNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) { notify('Title and message required', false); return; }
+    setSendingNotif(true);
+    const res  = await fetch('/api/admin/notifications', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ title: notifTitle.trim(), body: notifBody.trim(), icon: notifIcon }),
+    });
+    const data = await res.json();
+    setSendingNotif(false);
+    if (res.ok) { notify('Notification sent to all users!', true); setNotifTitle(''); setNotifBody(''); fetchSentNotifs(); }
+    else notify(data.error || 'Failed', false);
+  };
+
   const handleApplication = async (id: string, status: 'approved' | 'rejected') => {
     const res  = await fetch('/api/admin/applications', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -330,13 +397,15 @@ export default function AdminPage() {
       { key: 'matches',      label: 'Matches',  icon: Trophy                                             },
       { key: 'exposure',     label: 'Exposure', icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
       { key: 'settings',     label: 'Limits',   icon: Settings                                           },
-      { key: 'withdrawals',  label: 'Support',  icon: DollarSign, badge: pendingWdraw || undefined       },
+      { key: 'withdrawals',  label: 'Withdrawals', icon: DollarSign, badge: pendingWdraw || undefined     },
       { key: 'rub',          label: 'RUB ₽',    icon: CreditCard, badge: pendingRub   || undefined       },
+      { key: 'support',      label: 'Support',  icon: MessageSquare, badge: openTicketCount || undefined   },
       { key: 'users',        label: 'Users',    icon: Shield                                              },
+      { key: 'notifications',label: 'Broadcast',icon: Bell                                                },
       { key: 'applications', label: 'Jobs',     icon: Briefcase,  badge: pendingApps  || undefined       },
     ];
     if (currentRole === 'admin')  return all;
-    if (currentRole === 'mod')       return all.filter(t => t.key === 'withdrawals' || t.key === 'rub');
+    if (currentRole === 'mod')       return all.filter(t => ['withdrawals','rub','support'].includes(t.key));
     if (currentRole === 'recruiter') return all.filter(t => t.key === 'applications');
     return all;
   };
@@ -929,6 +998,167 @@ export default function AdminPage() {
                   onClick={() => { const p=userPage+1; setUserPage(p); fetchUsers(userSearch,p); }}
                   className="px-4 py-2 bg-surface border border-white/8 rounded-xl text-xs font-black disabled:opacity-40 hover:bg-white/5"
                 >Next →</button>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* ── SUPPORT ── */}
+        {activeTab === 'support' && (
+          <div className="space-y-3">
+            {activeTicket ? (
+              /* Ticket detail */
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <button onClick={() => setActiveTicket(null)}
+                    className="w-9 h-9 rounded-xl bg-surface border border-white/8 flex items-center justify-center text-gray-400 hover:text-white"
+                  ><ChevronDown size={16} className="rotate-90"/></button>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm truncate">{activeTicket.subject}</p>
+                    <p className="text-xs text-gray-500">{activeTicket.username}</p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {(['open','pending','closed'] as const).filter(s => s !== activeTicket.status).map(s => (
+                      <button key={s} onClick={() => changeTicketStatus(activeTicket._id, s)}
+                        className="px-2 py-1 rounded-lg bg-surface border border-white/8 text-[10px] font-black text-gray-500 hover:text-white capitalize"
+                      >→ {s}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+                  {activeTicket.messages.map((msg, i) => {
+                    const isUser = msg.senderRole === 'user';
+                    return (
+                      <div key={i} className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
+                        <div className="max-w-[85%] space-y-1">
+                          <p className={`text-[9px] font-bold ${isUser ? 'text-gray-500' : 'text-accent/70 text-right'}`}>
+                            {isUser ? `👤 ${msg.senderName}` : `🛡️ ${msg.senderName}`}
+                          </p>
+                          <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                            isUser ? 'bg-surface border border-white/8 text-gray-200 rounded-tl-sm' : 'bg-accent text-white rounded-tr-sm'
+                          }`}>{msg.body}</div>
+                          <p className={`text-[9px] text-gray-600 ${!isUser ? 'text-right' : ''}`}>{new Date(msg.createdAt).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {activeTicket.status !== 'closed' && (
+                  <div className="flex gap-2 items-end border-t border-white/8 pt-3">
+                    <textarea value={ticketReply} onChange={e => setTicketReply(e.target.value)}
+                      onKeyDown={e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendTicketReply(activeTicket._id); }}}
+                      placeholder="Reply to user... (Enter to send)" rows={2}
+                      className="flex-1 bg-surface border border-white/8 rounded-xl px-4 py-3 outline-none text-sm resize-none focus:border-accent/50"
+                    />
+                    <button onClick={() => sendTicketReply(activeTicket._id)} disabled={sendingReply || !ticketReply.trim()}
+                      className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center text-white hover:bg-accent/90 disabled:opacity-40 shrink-0"
+                    >
+                      {sendingReply ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Send size={16}/>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Ticket list */
+              <>
+                <div className="flex gap-1.5">
+                  {(['open','pending','closed','all'] as const).map(s => (
+                    <button key={s} onClick={() => { setSupportFilter(s); fetchSupport(s); }}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
+                        supportFilter===s ? 'bg-accent text-white' : 'bg-surface border border-white/8 text-gray-500 hover:text-white'
+                      }`}
+                    >{s}</button>
+                  ))}
+                </div>
+                {supportTickets.length === 0
+                  ? <p className="text-center text-gray-600 text-sm py-8">No {supportFilter} tickets</p>
+                  : supportTickets.map(t => (
+                    <button key={t._id} onClick={() => setActiveTicket(t)}
+                      className={`w-full bg-surface border rounded-2xl p-4 text-left hover:border-white/20 transition-all ${
+                        !t.readByMod ? 'border-accent/40 bg-accent/5' : 'border-white/8'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            {!t.readByMod && <span className="w-2 h-2 bg-accent rounded-full shrink-0"/>}
+                            <p className="font-black text-sm truncate">{t.subject}</p>
+                          </div>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {t.username} · {t.messages.length} msg · {new Date(t.lastReplyAt).toLocaleString()}
+                          </p>
+                          {t.messages.length > 0 && (
+                            <p className="text-xs text-gray-600 mt-1 truncate">
+                              {t.messages[t.messages.length-1].body}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${
+                          t.status==='open'?'bg-green-500/15 text-green-400 border-green-500/20':
+                          t.status==='pending'?'bg-yellow-500/15 text-yellow-400 border-yellow-500/20':
+                          'bg-gray-500/15 text-gray-400 border-gray-500/20'
+                        }`}>{t.status}</span>
+                      </div>
+                    </button>
+                  ))
+                }
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── NOTIFICATIONS ── */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-4">
+            <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
+              <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                <Bell size={12} className="text-accent"/> Send Global Notification
+              </p>
+              <div className="flex gap-2">
+                <p className="text-xs text-gray-400 font-bold shrink-0 mt-2.5">Icon</p>
+                <input value={notifIcon} onChange={e => setNotifIcon(e.target.value)}
+                  className="w-14 bg-background border border-white/8 rounded-xl px-3 py-2.5 text-center text-xl outline-none"
+                  maxLength={2}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 font-bold block mb-1.5">Title</label>
+                <input value={notifTitle} onChange={e => setNotifTitle(e.target.value)}
+                  placeholder="e.g. 🎉 New match available!"
+                  className="w-full bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent/50"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 font-bold block mb-1.5">Message</label>
+                <textarea value={notifBody} onChange={e => setNotifBody(e.target.value)}
+                  placeholder="Write your message to all users..."
+                  rows={3}
+                  className="w-full bg-background border border-white/8 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent/50 resize-none"
+                />
+              </div>
+              <button onClick={sendNotification} disabled={sendingNotif || !notifTitle.trim() || !notifBody.trim()}
+                className="w-full py-3 bg-accent text-white rounded-xl font-black text-sm uppercase hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {sendingNotif ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Bell size={14}/>}
+                Send to All Users
+              </button>
+            </div>
+            {sentNotifs.length > 0 && (
+              <div className="bg-surface border border-white/8 rounded-2xl overflow-hidden">
+                <p className="px-4 py-3 text-xs font-black uppercase tracking-wider text-gray-500 border-b border-white/5">Previously Sent</p>
+                <div className="divide-y divide-white/5">
+                  {sentNotifs.map(n => (
+                    <div key={n._id} className="px-4 py-3 flex items-start gap-3">
+                      <span className="text-xl shrink-0">{n.icon}</span>
+                      <div className="min-w-0">
+                        <p className="font-black text-sm">{n.title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{n.body}</p>
+                        <p className="text-[10px] text-gray-600 mt-1">{new Date(n.createdAt).toLocaleString()} · {n.readBy?.length ?? 0} read</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
