@@ -79,10 +79,22 @@ export async function sendBEP20Payout(
 
     const gasPrice = await provider.getFeeData();
     const gasLimit = BigInt(75000);
+    const gasPriceWei = gasPrice.gasPrice || BigInt(5000000000);
+    const estimatedGasCost = gasLimit * gasPriceWei;
+    const bnbBalance = await provider.getBalance(wallet.address);
+
+    if (bnbBalance < estimatedGasCost) {
+      return {
+        txHash: '',
+        status: 'failed',
+        success: false,
+        message: `Insufficient BNB for gas. Need ~${ethers.formatEther(estimatedGasCost)} BNB, wallet has ${ethers.formatEther(bnbBalance)} BNB`,
+      };
+    }
 
     const tx = await usdt.transfer(toAddress, amountWei, {
       gasLimit,
-      gasPrice: gasPrice.gasPrice || BigInt(5000000000),
+      gasPrice: gasPriceWei,
     });
 
     console.log(`BEP20 payout tx sent: ${tx.hash} | amount: ${amount} USDT | to: ${toAddress} | txId: ${transactionId}`);
@@ -163,10 +175,22 @@ export async function sendToTreasury(
 
     const gasPrice = await provider.getFeeData();
     const gasLimit = BigInt(75000);
+    const gasPriceWei = gasPrice.gasPrice || BigInt(5000000000);
+    const estimatedGasCost = gasLimit * gasPriceWei;
+    const bnbBalance = await provider.getBalance(wallet.address);
+
+    if (bnbBalance < estimatedGasCost) {
+      return {
+        txHash: '',
+        status: 'failed',
+        success: false,
+        message: `Insufficient BNB for treasury gas. Need ~${ethers.formatEther(estimatedGasCost)} BNB, wallet has ${ethers.formatEther(bnbBalance)} BNB`,
+      };
+    }
 
     const tx = await usdt.transfer(treasuryAddress, amountWei, {
       gasLimit,
-      gasPrice: gasPrice.gasPrice || BigInt(5000000000),
+      gasPrice: gasPriceWei,
     });
 
     console.log(`Treasury fee tx sent: ${tx.hash} | amount: ${amount} USDT | to: ${treasuryAddress}`);
