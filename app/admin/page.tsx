@@ -7,12 +7,12 @@ import {
   ChevronDown, ChevronUp, Trash2, CheckCircle2,
   Settings, Briefcase, ExternalLink, AlertTriangle,
   DollarSign, BarChart2, Clock, Save, CreditCard, Search, Menu,
-  MessageSquare, Bell, Send,
+  MessageSquare, Bell, Send, TrendingUp, Users, Wallet,
 } from 'lucide-react';
 import { LEAGUES } from '@/lib/sports';
 
 type MatchStatus = 'pending' | 'open' | 'closed' | 'settled';
-type ActiveTab   = 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'users' | 'applications' | 'support' | 'notifications';
+type ActiveTab   = 'dashboard' | 'matches' | 'exposure' | 'settings' | 'withdrawals' | 'rub' | 'users' | 'applications' | 'support' | 'notifications';
 
 interface Match {
   _id: string; homeTeam: string; awayTeam: string; league: string;
@@ -64,6 +64,16 @@ interface SupportTicket {
   lastReplyAt: string; readByMod: boolean; createdAt: string;
 }
 
+interface DashboardStats {
+  users: { total: number; withBalance: number; totalBalance: number };
+  deposits: { total: number; count: number };
+  withdrawals: { total: number; count: number; pending: number; pendingAmount: number };
+  fees: { withdrawal: number };
+  bets: { total: number; pending: number; won: number; lost: number; refunded: number; totalStaked: number; totalPayout: number; wonPayout: number; refundedTotal: number };
+  matches: { open: number; closed: number; settled: number };
+  houseProfit: { withdrawalFees: number; note: string };
+}
+
 const STATUS_COLOR: Record<MatchStatus, string> = {
   pending: 'text-yellow-400', open: 'text-green-400',
   closed: 'text-orange-400',  settled: 'text-gray-400',
@@ -93,11 +103,12 @@ export default function AdminPage() {
   const [withdrawals,   setWithdrawals]   = useState<Withdrawal[]>([]);
   const [rubDeposits,   setRubDeposits]   = useState<RubDeposit[]>([]);
   const [applications,  setApplications]  = useState<Application[]>([]);
+  const [stats,        setStats]        = useState<DashboardStats | null>(null);
 
   const [isAuthorized,  setIsAuthorized]  = useState(false);
   const [currentRole,   setCurrentRole]   = useState<'user'|'mod'|'recruiter'|'admin'>('user');
   const [checkingAuth,  setCheckingAuth]  = useState(true);
-  const [activeTab,     setActiveTab]     = useState<ActiveTab>('matches');
+  const [activeTab,     setActiveTab]     = useState<ActiveTab>('dashboard');
 
   const [importLeague, setImportLeague] = useState('all');
   const [importing,    setImporting]    = useState(false);
@@ -182,6 +193,11 @@ export default function AdminPage() {
     setApplications((await res.json()).applications ?? []);
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    const res = await fetch('/api/admin/stats'); if (!res.ok) return;
+    setStats(await res.json());
+  }, []);
+
   const fetchSupport = useCallback(async (status='open') => {
     const res = await fetch(`/api/admin/support?status=${status}`); if (!res.ok) return;
     const data = await res.json();
@@ -208,7 +224,7 @@ export default function AdminPage() {
           if (role === 'admin') {
             fetchMatches(); fetchExposure(); fetchSettings();
             fetchWithdrawals(); fetchRubDeposits(); fetchUsers(); fetchApplications();
-            fetchSupport(); fetchSentNotifs();
+            fetchSupport(); fetchSentNotifs(); fetchStats();
           } else if (role === 'mod') {
             fetchWithdrawals(); fetchRubDeposits(); fetchSupport();
             setActiveTab('support');
@@ -219,7 +235,7 @@ export default function AdminPage() {
         }
       } finally { setCheckingAuth(false); }
     })();
-  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchUsers, fetchApplications, fetchSupport, fetchSentNotifs]);
+  }, [fetchMatches, fetchExposure, fetchSettings, fetchWithdrawals, fetchRubDeposits, fetchUsers, fetchApplications, fetchSupport, fetchSentNotifs, fetchStats]);
 
   useEffect(() => {
     if (activeTab !== 'exposure') return;
@@ -228,10 +244,11 @@ export default function AdminPage() {
   }, [activeTab, fetchExposure]);
 
   useEffect(() => {
-    if (activeTab === 'rub')           fetchRubDeposits();
-    if (activeTab === 'support')       fetchSupport(supportFilter);
+    if (activeTab === 'dashboard') fetchStats();
+    if (activeTab === 'rub') fetchRubDeposits();
+    if (activeTab === 'support') fetchSupport(supportFilter);
     if (activeTab === 'notifications') fetchSentNotifs();
-  }, [activeTab, fetchRubDeposits, fetchSupport, fetchSentNotifs, supportFilter]);
+  }, [activeTab, fetchRubDeposits, fetchSupport, fetchSentNotifs, supportFilter, fetchStats]);
 
   const importMatches = async () => {
     setImporting(true); setImportMsg('');
@@ -461,6 +478,7 @@ export default function AdminPage() {
 
   const buildTabs = (): { key: ActiveTab; label: string; icon: any; badge?: number }[] => {
     const all: { key: ActiveTab; label: string; icon: any; badge?: number }[] = [
+      { key: 'dashboard',    label: 'Dashboard', icon: TrendingUp                                           },
       { key: 'matches',      label: 'Matches',  icon: Trophy                                             },
       { key: 'exposure',     label: 'Exposure', icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
       { key: 'settings',     label: 'Limits',   icon: Settings                                           },
@@ -559,6 +577,156 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* ── DASHBOARD ── */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-4">
+            {!stats ? (
+              <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <>
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users size={14} className="text-blue-400"/>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Users</span>
+                    </div>
+                    <p className="text-2xl font-black text-white">{stats.users.total}</p>
+                    <p className="text-[9px] text-gray-500">{stats.users.withBalance} with balance</p>
+                  </div>
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign size={14} className="text-green-400"/>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Deposits</span>
+                    </div>
+                    <p className="text-2xl font-black text-white">{stats.deposits.total.toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-500">{stats.deposits.count} transactions</p>
+                  </div>
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Wallet size={14} className="text-orange-400"/>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Withdrawals</span>
+                    </div>
+                    <p className="text-2xl font-black text-white">{stats.withdrawals.total.toFixed(2)}</p>
+                    {stats.withdrawals.pending > 0 && (
+                      <p className="text-[9px] text-orange-400">{stats.withdrawals.pending} pending ({stats.withdrawals.pendingAmount.toFixed(2)} USDT)</p>
+                    )}
+                  </div>
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp size={14} className="text-accent"/>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Fees Earned</span>
+                    </div>
+                    <p className="text-2xl font-black text-green-400">+{stats.fees.withdrawal.toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-500">from withdrawals</p>
+                  </div>
+                </div>
+
+                {/* Balance & Exposure */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">User Balances</p>
+                    <p className="text-3xl font-black text-white">{stats.users.totalBalance.toFixed(2)} USDT</p>
+                    <p className="text-[10px] text-gray-500 mt-1">Total owed to users</p>
+                    {houseSettings.houseReserve < stats.users.totalBalance && (
+                      <div className="flex items-center gap-2 mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
+                        <AlertTriangle size={12} className="text-yellow-400"/>
+                        <p className="text-[10px] text-yellow-400">Reserve ({houseSettings.houseReserve} USDT) is less than user balances</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className={`rounded-2xl p-4 border ${totalExposure > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-green-500/10 border-green-500/30'}`}>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">House Exposure</p>
+                    <p className={`text-3xl font-black ${totalExposure > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                      {totalExposure > 0 ? `-${totalExposure.toFixed(2)}` : '0.00'} USDT
+                    </p>
+                    <p className="text-[10px] text-gray-500 mt-1">Max potential loss on open bets</p>
+                  </div>
+                </div>
+
+                {/* Bets Overview */}
+                <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Bets Overview</p>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div className="text-center">
+                      <p className="text-xl font-black text-white">{stats.bets.total}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Total</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-yellow-400">{stats.bets.pending}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Pending</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-green-400">{stats.bets.won}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Won</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-red-400">{stats.bets.lost}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Lost</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-blue-400">{stats.bets.refunded}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Refunded</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/5">
+                    <div className="text-center">
+                      <p className="text-sm font-black text-white">{stats.bets.totalStaked.toFixed(2)}</p>
+                      <p className="text-[9px] text-gray-500">Staked USDT</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-black text-green-400">{stats.bets.wonPayout.toFixed(2)}</p>
+                      <p className="text-[9px] text-gray-500">Paid to Winners</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-black text-blue-400">{stats.bets.refundedTotal.toFixed(2)}</p>
+                      <p className="text-[9px] text-gray-500">Refunded</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Matches Status */}
+                <div className="bg-surface border border-white/8 rounded-2xl p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Matches Status</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center bg-green-500/10 rounded-xl p-3">
+                      <p className="text-2xl font-black text-green-400">{stats.matches.open}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Open</p>
+                    </div>
+                    <div className="text-center bg-orange-500/10 rounded-xl p-3">
+                      <p className="text-2xl font-black text-orange-400">{stats.matches.closed}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Closed</p>
+                    </div>
+                    <div className="text-center bg-gray-500/10 rounded-xl p-3">
+                      <p className="text-2xl font-black text-gray-400">{stats.matches.settled}</p>
+                      <p className="text-[9px] text-gray-500 uppercase">Settled</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* House Profit Summary */}
+                <div className="bg-gradient-to-r from-accent/10 to-green-500/10 border border-accent/20 rounded-2xl p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">📊 How You Earn</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Withdrawal Fees:</span>
+                      <span className="text-green-400 font-black">+{stats.fees.withdrawal.toFixed(2)} USDT</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Margin on Odds:</span>
+                      <span className="text-white">Built into each winning bet</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-3">
+                      💡 Your profit comes from: (1) $1 fee per withdrawal, (2) margin baked into odds (users get paid less than fair odds).
+                      With Money Back enabled, losers get their stake refunded - your margin is already captured when winners get paid.
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* ── MATCHES ── */}
         {activeTab === 'matches' && (
