@@ -24,7 +24,9 @@ interface ExposureMatch {
   matchId: string; homeTeam: string; awayTeam: string; league: string;
   date: string; time: string; status: string;
   totalBets: number; totalStaked: number;
+  resultStaked: number; goalStaked: number;
   breakdown: { home: number; draw: number; away: number; dc: number };
+  goalBreakdown: Record<string, number>;
   payouts: { ifHome: number; ifDraw: number; ifAway: number };
   profit:  { ifHome: number; ifDraw: number; ifAway: number; worstCase: number };
   displayOdds: { home: number; draw: number; away: number } | null;
@@ -869,6 +871,21 @@ export default function AdminPage() {
                       </div>
                     ))}
                   </div>
+                  {(m as any).goalStaked > 0 && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
+                      <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">Goal Bets</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Object.entries((m as any).goalBreakdown || {}).filter(([,count]) => (count as number) > 0).map(([sel, count]) => (
+                          <span key={sel} className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">
+                            {sel}: {count as number}
+                          </span>
+                        ))}
+                        <span className="text-[9px] text-blue-400 font-bold ml-auto">
+                          {(m as any).goalStaked?.toFixed(2)} USDT
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-[10px] font-black uppercase text-gray-600">House P&L if result is...</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[

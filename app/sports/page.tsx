@@ -256,9 +256,9 @@ export default function SportsPage() {
   return (
     <Layout>
       {/* League selector - same style as admin panel */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-3">
         {/* Desktop: horizontal scrollable tabs */}
-        <div className="hidden lg:flex bg-surface border border-white/8 rounded-xl p-1 gap-1 overflow-x-auto">
+        <div className="hidden lg:flex bg-surface border border-white/8 rounded-xl p-1 gap-1 overflow-x-auto flex-1">
           <button 
             onClick={() => setActiveLeague('All')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
