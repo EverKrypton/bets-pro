@@ -12,14 +12,15 @@
  *   Status values: "Paying" | "Paid"  (payment) | "Confirming" | "Confirmed" | "Failed" (payout)
  */
 
-import crypto      from 'crypto';
-import dbConnect   from '@/lib/db';
-import User        from '@/models/User';
-import Transaction from '@/models/Transaction';
+import crypto         from 'crypto';
+import dbConnect      from '@/lib/db';
+import User           from '@/models/User';
+import Transaction    from '@/models/Transaction';
+import Notification   from '@/models/Notification';
+import Settings       from '@/models/Settings';
 
 const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
 const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
-const MIN_DEPOSIT  = 10;
 
 // All payment-originated webhook types (from docs)
 const PAYMENT_TYPES = new Set([
@@ -67,11 +68,14 @@ export async function POST(req: Request): Promise<Response> {
 
   await dbConnect();
 
+  const settings  = await Settings.findOne({ key: 'global' });
+  const minDeposit = settings?.minDepositAmount ?? 10;
+
   // ── Payment received ────────────────────────────────────────────────────────
   if (type && PAYMENT_TYPES.has(type) && status === 'Paid') {
     if (!track_id) { console.error('OxaPay webhook: missing track_id'); return ok(); }
-    if (amount < MIN_DEPOSIT) {
-      console.warn(`OxaPay webhook: deposit ${amount} below min ${MIN_DEPOSIT}`);
+    if (amount < minDeposit) {
+      console.warn(`OxaPay webhook: deposit ${amount} below min ${minDeposit}`);
       return ok();
     }
     if (!order_id) { console.error('OxaPay webhook: missing order_id'); return ok(); }
@@ -100,6 +104,14 @@ export async function POST(req: Request): Promise<Response> {
       details:  { order_id, address: user.depositAddress, network: body.network ?? 'BSC' },
     });
 
+    await Notification.create({
+      userId: user._id,
+      title:  'Deposit Successful',
+      body:   `Your deposit of ${amount} USDT has been credited to your account.`,
+      type:   'personal',
+      icon:   '💰',
+    });
+
     // Referral bonus
     if (user.referrerCode) {
       const referrer = await User.findOne({ myReferralCode: user.referrerCode });
@@ -123,11 +135,20 @@ export async function POST(req: Request): Promise<Response> {
     if (!track_id) return ok();
 
     if (status === 'Confirmed') {
-      await Transaction.findOneAndUpdate(
+      const tx = await Transaction.findOneAndUpdate(
         { txId: track_id, type: 'withdraw' },
         { status: 'completed' },
         { returnDocument: 'after' },
       );
+      if (tx) {
+        await Notification.create({
+          userId: tx.userId,
+          title:  'Withdrawal Confirmed',
+          body:   `Your withdrawal of ${tx.amount} USDT has been confirmed and sent.`,
+          type:   'personal',
+          icon:   '✅',
+        });
+      }
     } else if (status === 'Failed') {
       const tx = await Transaction.findOne({ txId: track_id, type: 'withdraw', status: { $ne: 'rejected' } });
       if (tx) {
@@ -138,6 +159,13 @@ export async function POST(req: Request): Promise<Response> {
           const gross = parseFloat(((tx.details as any)?.grossAmount ?? tx.amount).toString());
           user.balance = parseFloat((user.balance + gross).toFixed(6));
           await user.save();
+          await Notification.create({
+            userId: user._id,
+            title:  'Withdrawal Failed',
+            body:   `Your withdrawal of ${gross} USDT failed and has been refunded to your account.`,
+            type:   'personal',
+            icon:   '❌',
+          });
         }
       }
     }

@@ -12,6 +12,7 @@ const SettingsSchema = new mongoose.Schema(
     liveScoreRefreshSecs: { type: Number, default: 30   },
     rubUsdRate:           { type: Number, default: 90   }, // RUB per 1 USDT
     rubBankDetails:       { type: String, default: ''   }, // card number / bank account shown to users
+    minDepositAmount:     { type: Number, default: 10   }, // minimum USDT deposit
   },
   { timestamps: true },
 );
