@@ -1,7 +1,7 @@
 'use client';
 
 import Layout from '@/components/Layout';
-import { Trophy, ArrowRight, Zap, Users } from 'lucide-react';
+import { Trophy, ArrowRight, Zap, Users, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Mascot from '@/components/Mascot';
@@ -11,6 +11,22 @@ interface RecentBet {
   details: { homeTeam?: string; awayTeam?: string; selection?: string; odd?: number; };
   amount: number;
   status: 'pending'|'won'|'lost'|'refunded';
+}
+
+interface BetStats {
+  hasActiveBets: boolean;
+  totalStaked: number;
+  pendingCount: number;
+  distribution: {
+    byResult: { home: number; draw: number; away: number; doubleChance: number; total: number };
+    byType: { results: number; goals: number };
+  };
+  scenarios: {
+    homeWins: { payout: number; profit: number };
+    draw: { payout: number; profit: number };
+    awayWins: { payout: number; profit: number };
+  };
+  worstCase: { profit: number; scenario: string };
 }
 
 const SEL_LABEL: Record<string,string> = {
@@ -23,10 +39,12 @@ const STATUS_COLOR: Record<string,string> = {
 export default function Home() {
   const [recentBets, setRecentBets] = useState<RecentBet[]>([]);
   const [minDeposit, setMinDeposit] = useState(10);
+  const [betStats, setBetStats] = useState<BetStats | null>(null);
 
   useEffect(() => {
     fetch('/api/bets/recent').then(r => r.ok ? r.json() : { bets:[] }).then(d => setRecentBets(d.bets ?? [])).catch(()=>{});
     fetch('/api/settings/public').then(r => r.ok ? r.json() : {}).then(d => setMinDeposit(d.minDepositAmount ?? 10)).catch(()=>{});
+    fetch('/api/bets/stats').then(r => r.ok ? r.json() : null).then(d => setBetStats(d)).catch(()=>{});
   }, []);
 
   return (
@@ -76,6 +94,87 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        {/* Active Bets Financial Summary */}
+        {betStats && betStats.hasActiveBets && (
+          <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <AlertTriangle size={12} className="text-yellow-500" /> Active Bets Summary
+              </h2>
+              <span className="text-[10px] text-gray-500 font-bold">{betStats.pendingCount} pending</span>
+            </div>
+
+            {/* TotalStaked */}
+            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-3">
+              <p className="text-[10px] text-gray-500 font-bold uppercase">Total in Play</p>
+              <p className="text-2xl font-black text-yellow-400">{betStats.totalStaked.toFixed(2)} <span className="text-xs text-gray-400">USDT</span></p>
+            </div>
+
+            {/* Distribution by Result */}
+            <div>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">By Result</p>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Home', value: betStats.distribution.byResult.home, color: 'text-blue-400' },
+                  { label: 'Draw', value: betStats.distribution.byResult.draw, color: 'text-gray-300' },
+                  { label: 'Away', value: betStats.distribution.byResult.away, color: 'text-red-400' },
+                  { label: 'DC', value: betStats.distribution.byResult.doubleChance, color: 'text-purple-400' },
+                ].map(r => (
+                  <div key={r.label} className="bg-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-gray-500 font-bold">{r.label}</p>
+                    <p className={`text-sm font-black ${r.color}`}>{r.value.toFixed(0)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Distribution by Type */}
+            <div>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">By Bet Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-white/5 rounded-lg p-2 text-center">
+                  <p className="text-[8px] text-gray-500 font-bold">Results</p>
+                  <p className="text-lg font-black text-blue-400">{betStats.distribution.byType.results.toFixed(0)}</p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 text-center">
+                  <p className="text-[8px] text-gray-500 font-bold">Goals</p>
+                  <p className="text-lg font-black text-green-400">{betStats.distribution.byType.goals.toFixed(0)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Scenarios */}
+            <div>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Potential Outcome</p>
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { label: 'Home Win', s: betStats.scenarios.homeWins },
+                  { label: 'Draw', s: betStats.scenarios.draw },
+                  { label: 'Away Win', s: betStats.scenarios.awayWins },
+                ].map(sc => (
+                  <div key={sc.label} className="bg-white/5 rounded-lg p-2 text-center">
+                    <p className="text-[8px] text-gray-500 font-bold">{sc.label}</p>
+                    <p className={`text-sm font-black ${sc.s.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {sc.s.profit >= 0 ? '+' : ''}{sc.s.profit.toFixed(0)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Worst Case */}
+            <div className={`rounded-xl p-3 ${betStats.worstCase.profit >= 0 ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+              <div className="flex items-center gap-2">
+                {betStats.worstCase.profit >= 0 ? <TrendingUp size={14} className="text-green-400" /> : <TrendingDown size={14} className="text-red-400" />}
+                <p className="text-[10px] text-gray-500 font-bold uppercase">Worst Case ({betStats.worstCase.scenario.toUpperCase()})</p>
+              </div>
+              <p className={`text-xl font-black ${betStats.worstCase.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {betStats.worstCase.profit >= 0 ? '+' : ''}{betStats.worstCase.profit.toFixed(2)} <span className="text-xs text-gray-400">USDT</span>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Sportsbook CTA Card */}
         <Link href="/sports"
