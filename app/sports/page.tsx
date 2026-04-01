@@ -254,43 +254,30 @@ export default function SportsPage() {
 
   return (
     <Layout>
-      {/* League selector */}
-      <div className="-mx-4 px-4 mb-3">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+      {/* League selector - scrollable tabs like admin panel */}
+      <div className="-mx-4 mb-3">
+        <div className="flex gap-1 overflow-x-auto px-4 py-0.5 scrollbar-hide">
           <button 
             onClick={() => setActiveLeague('All')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
               activeLeague==='All' 
-                ? 'bg-gradient-to-r from-accent to-red-600 text-white' 
-                : 'bg-surface border border-white/8 text-gray-400 hover:text-white'
+                ? 'bg-accent text-white' 
+                : 'bg-surface border border-white/8 text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             All
           </button>
-          {leagues.map(lg => (
+          {leagues.sort().map(lg => (
             <button key={lg} onClick={() => setActiveLeague(lg)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeLeague===lg 
                   ? 'bg-accent text-white' 
-                  : 'bg-surface border border-white/8 text-gray-400 hover:text-white'
+                  : 'bg-surface border border-white/8 text-gray-400 hover:text-white hover:bg-white/5'
               }`}
-            >{lg.length > 15 ? lg.slice(0, 15) + '…' : lg}</button>
+            >{lg.length > 18 ? lg.slice(0, 16) + '…' : lg}</button>
           ))}
         </div>
       </div>
-
-      {/* Active league header */}
-      {activeLeague !== 'All' && (
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{activeLeague}</span>
-          <button 
-            onClick={() => setActiveLeague('All')}
-            className="text-[10px] text-accent font-bold hover:text-white transition-colors"
-          >
-            Show All
-          </button>
-        </div>
-      )}
 
       {/* Live banner */}
       {liveCount>0 && (
