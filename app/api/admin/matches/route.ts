@@ -7,12 +7,12 @@ import Settings                                      from '@/models/Settings';
 const FOOTBALL_DATA = 'https://api.football-data.org/v4';
 
 const LEAGUE_CODES: Record<string, string> = {
-  premier_league:   'PPL',   // Premier League
-  la_liga:          'PD',    // La Liga
-  bundesliga:       'BL1',   // Bundesliga
-  serie_a:          'SA',    // Serie A
-  champions_league: 'CL',    // UEFA Champions League
-  mls:              'MLS',   // MLS (may not be available)
+  premier_league:   'PPL',
+  la_liga:          'PD',
+  bundesliga:       'BL1',
+  serie_a:          'SA',
+  champions_league: 'CL',
+  mls:              'MLS',
 };
 
 async function fetchFootballDataMatches(leagueKey?: string): Promise<any[]> {
@@ -32,7 +32,7 @@ async function fetchFootballDataMatches(leagueKey?: string): Promise<any[]> {
   let url = `${FOOTBALL_DATA}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}&status=SCHEDULED,TIMED`;
 
   if (leagueKey && LEAGUE_CODES[leagueKey]) {
-    url += `&competitions=${LEAGUE_CODES[leagueKey]}`;
+    url = `${FOOTBALL_DATA}/competitions/${LEAGUE_CODES[leagueKey]}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}&status=SCHEDULED,TIMED`;
   }
 
   const res = await fetch(url, {
@@ -41,11 +41,16 @@ async function fetchFootballDataMatches(leagueKey?: string): Promise<any[]> {
   });
 
   if (!res.ok) {
-    throw new Error(`football-data.org API error: ${res.status}`);
+    throw new Error(`football-data.org API error: ${res.status} - ${res.statusText}`);
   }
 
   const data = await res.json();
-  return data.matches || [];
+
+  if (!data.matches || data.matches.length === 0) {
+    return [];
+  }
+
+  return data.matches;
 }
 
 export async function GET() {
@@ -73,33 +78,41 @@ export async function POST(req: Request) {
 
     if (matches.length === 0) {
       return NextResponse.json(
-        { error: 'No upcoming matches found. Check your API key or try again later.' },
+        { error: 'No upcoming matches found. The API key may be invalid, or there are no scheduled matches in the next 7 days.' },
         { status: 400 },
       );
     }
 
     let imported = 0;
     let updated = 0;
+    let skipped = 0;
 
     for (const m of matches) {
       const dateStr = m.utcDate ? m.utcDate.split('T')[0] : new Date().toISOString().split('T')[0];
       const timeStr = m.utcDate ? m.utcDate.split('T')[1]?.slice(0, 5) || '00:00' : '00:00';
 
-      const query = { apiId: String(m.id) };
+      const query: any = { apiId: String(m.id) };
       const existing = await Match.findOne(query);
 
       if (existing) {
         const changed =
           existing.homeBadge !== (m.homeTeam?.crest || '') ||
           existing.awayBadge !== (m.awayTeam?.crest || '') ||
-          !existing.league;
+          existing.homeTeam !== (m.homeTeam?.name || '') ||
+          existing.awayTeam !== (m.awayTeam?.name || '');
 
         if (changed) {
-          existing.homeBadge = m.homeTeam?.crest || '';
-          existing.awayBadge = m.awayTeam?.crest || '';
-          if (!existing.league) existing.league = m.competition?.name || '';
+          existing.homeTeam = m.homeTeam?.name || existing.homeTeam;
+          existing.awayTeam = m.awayTeam?.name || existing.awayTeam;
+          existing.homeBadge = m.homeTeam?.crest || existing.homeBadge;
+          existing.awayBadge = m.awayTeam?.crest || existing.awayBadge;
+          existing.league = m.competition?.name || existing.league;
+          existing.date = dateStr;
+          existing.time = timeStr;
           await existing.save();
           updated++;
+        } else {
+          skipped++;
         }
         continue;
       }
@@ -120,7 +133,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { message: `${imported} new, ${updated} updated with badges`, imported, updated, total: matches.length },
+      { message: `${imported} imported, ${updated} updated, ${skipped} unchanged`, imported, updated, skipped, total: matches.length },
       { status: 201 },
     );
   } catch (error: unknown) {
