@@ -88,6 +88,7 @@ export async function POST(req: Request): Promise<Response> {
       if (!user) console.error('OxaPay webhook: user not found from order_id', userId);
     }
 
+
     if (!user && address) {
       user = await User.findOne({ depositAddress: address });
       if (!user) console.error('OxaPay webhook: user not found from address', address);
@@ -97,6 +98,14 @@ export async function POST(req: Request): Promise<Response> {
       user = await User.findOne({ depositTrackId: track_id });
       if (!user) console.error('OxaPay webhook: user not found from track_id', track_id);
     }
+
+
+
+    if (!user && address) {
+      user = await User.findOne({ depositAddress: address });
+      if (!user) console.error('OxaPay webhook: user not found from address', address);
+    }
+
 
     if (!user) {
       console.error('OxaPay webhook: unable to resolve user. order_id:', order_id, 'address:', address);
