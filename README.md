@@ -2,6 +2,8 @@
 
 Next.js 15 · MongoDB Atlas · OxaPay · USDT BEP20 · TheSportsDB (free, no key)
 
+Updated: 2026-04-01
+
 ---
 
 ## Stack

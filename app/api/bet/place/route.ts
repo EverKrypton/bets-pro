@@ -6,7 +6,14 @@ import Match              from '@/models/Match';
 import Settings           from '@/models/Settings';
 import User               from '@/models/User';
 
-const ALL_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
+const RESULT_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
+const GOAL_MARKETS = [
+  'homeOver05', 'homeOver15', 'homeUnder05',
+  'awayOver05', 'awayOver15', 'awayUnder05',
+  'totalOver15', 'totalOver25', 'totalUnder15', 'totalUnder25',
+  'bttsYes', 'bttsNo',
+] as const;
+const ALL_MARKETS = [...RESULT_MARKETS, ...GOAL_MARKETS] as const;
 type Market = typeof ALL_MARKETS[number];
 
 function doubleChanceOdd(odds: { home: number; draw: number; away: number }, market: Market): number {
@@ -66,11 +73,19 @@ export async function POST(req: Request) {
       if (!odd || odd < 1.01) {
         return NextResponse.json({ error: 'Odds not available for this selection' }, { status: 400 });
       }
-    } else {
-      if (!match.displayOdds?.home || !match.displayOdds?.draw || !match.displayOdds?.away) {
+    } else if (['1x', 'x2', '12'].includes(sel)) {
+      if (!match.displayOdds?.home ||!match.displayOdds?.draw || !match.displayOdds?.away) {
         return NextResponse.json({ error: 'Odds not set for this match' }, { status: 400 });
       }
       odd = doubleChanceOdd(match.displayOdds, sel);
+    } else if (GOAL_MARKETS.includes(sel as typeof GOAL_MARKETS[number])) {
+      const goalOdds = (match as any).goalOdds;
+      odd = goalOdds?.[sel];
+      if (!odd || odd < 1.01) {
+        return NextResponse.json({ error: 'Goal odds not available for this selection' }, { status: 400 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Invalid selection' }, { status: 400 });
     }
 
     const potentialPayout = parseFloat((betAmount * odd).toFixed(6));
