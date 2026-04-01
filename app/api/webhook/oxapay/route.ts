@@ -24,7 +24,7 @@ const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
 
 // All payment-originated webhook types (from docs)
 const PAYMENT_TYPES = new Set([
-  'invoice', 'white_label', 'static_address', 'payment_link', 'donation',
+  'invoice', 'white_label', 'static_address', 'payment_link', 'donation', 'payment',
 ]);
 
 function ok()  { return new Response('ok',    { status: 200 }); }
@@ -53,7 +53,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const calculated = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-  if (calculated !== hmacHeader) {
+  if (calculated.toLowerCase() !== hmacHeader.trim().toLowerCase()) {
     console.error('OxaPay webhook: HMAC mismatch');
     return bad();
   }
@@ -61,6 +61,7 @@ export async function POST(req: Request): Promise<Response> {
   // ── Field names exactly as documented ──────────────────────────────────────
   const track_id = body.track_id as string | undefined;
   const order_id = body.order_id as string | undefined;
+  const address  = body.address as string | undefined;
   // amount is a decimal number in the IPN payload
   const amount   = typeof body.amount === 'number'
     ? body.amount
@@ -78,14 +79,23 @@ export async function POST(req: Request): Promise<Response> {
       console.warn(`OxaPay webhook: deposit ${amount} below min ${minDeposit}`);
       return ok();
     }
-    if (!order_id) { console.error('OxaPay webhook: missing order_id'); return ok(); }
+    let user = null;
 
-    // order_id format: "deposit-{userId}"
-    const userId = order_id.startsWith('deposit-') ? order_id.slice(8) : null;
-    if (!userId) { console.error('OxaPay webhook: cannot parse userId from', order_id); return ok(); }
+    if (order_id && order_id.startsWith('deposit-')) {
+      const userId = order_id.slice(8);
+      user = await User.findById(userId);
+      if (!user) console.error('OxaPay webhook: user not found from order_id', userId);
+    }
 
-    const user = await User.findById(userId);
-    if (!user) { console.error('OxaPay webhook: user not found', userId); return ok(); }
+    if (!user && address) {
+      user = await User.findOne({ depositAddress: address });
+      if (!user) console.error('OxaPay webhook: user not found from address', address);
+    }
+
+    if (!user) {
+      console.error('OxaPay webhook: unable to resolve user. order_id:', order_id, 'address:', address);
+      return ok();
+    }
 
     // Idempotency: skip if already processed
     const existing = await Transaction.findOne({ txId: track_id, type: 'deposit' });
@@ -101,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
       currency: 'USDT',
       status:   'completed',
       txId:     track_id,
-      details:  { order_id, address: user.depositAddress, network: body.network ?? 'BSC' },
+      details:  { order_id, address: address || user.depositAddress, network: body.network ?? 'BSC' },
     });
 
     await Notification.create({

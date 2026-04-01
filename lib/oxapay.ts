@@ -40,7 +40,7 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
     throw new Error('NEXT_PUBLIC_APP_URL not configured');
   }
 
-  const callbackUrl = `${appUrl}/api/webhook/oxapay`;
+  const callbackUrl = `${appUrl.replace(/\/+$/, '')}/api/webhook/oxapay`;
   const orderId = `deposit-${userId}`;
 
   console.log('[OxaPay] Creating static address for user:', userId);
@@ -56,7 +56,7 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
     const result = await payment.generateStaticAddress({
       network: 'BSC',
       to_currency: 'USDT',
-      auto_withdrawal: false,
+      auto_withdrawal: true,
       callback_url: callbackUrl,
       order_id: orderId,
       description: `Bets Pro deposit – user ${userId}`,
