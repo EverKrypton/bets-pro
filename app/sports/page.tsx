@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
-import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap } from 'lucide-react';
+import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Odds  { home: number; draw: number; away: number; }
@@ -146,6 +146,7 @@ export default function SportsPage() {
   const [minBet,       setMinBet]       = useState(1);
   const [refreshSecs,  setRefreshSecs]  = useState(30);
   const [liveCount,    setLiveCount]    = useState(0);
+  const [menuOpen,    setMenuOpen]     = useState(false);
   const timer = useRef<ReturnType<typeof setInterval>|null>(null);
 
   const fetchLive = useCallback(async () => {
@@ -254,28 +255,74 @@ export default function SportsPage() {
 
   return (
     <Layout>
-      {/* League selector - scrollable tabs like admin panel */}
-      <div className="-mx-4 mb-3">
-        <div className="flex gap-1 overflow-x-auto px-4 py-0.5 scrollbar-hide">
+      {/* League selector - same style as admin panel */}
+      <div className="flex items-center gap-2">
+        {/* Desktop: horizontal scrollable tabs */}
+        <div className="hidden lg:flex bg-surface border border-white/8 rounded-xl p-1 gap-1 overflow-x-auto">
           <button 
             onClick={() => setActiveLeague('All')}
-            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
               activeLeague==='All' 
                 ? 'bg-accent text-white' 
-                : 'bg-surface border border-white/8 text-gray-400 hover:text-white hover:bg-white/5'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             All
           </button>
           {leagues.sort().map(lg => (
             <button key={lg} onClick={() => setActiveLeague(lg)}
-              className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
                 activeLeague===lg 
                   ? 'bg-accent text-white' 
-                  : 'bg-surface border border-white/8 text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
-            >{lg.length > 18 ? lg.slice(0, 16) + '…' : lg}</button>
+            >{lg}</button>
           ))}
+        </div>
+        {/* Mobile: active league pill + dropdown menu */}
+        <div className="flex-1 flex items-center gap-2 lg:hidden">
+          <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-4 py-2.5">
+            <span className="font-black text-sm text-white truncate">{activeLeague === 'All' ? 'All Leagues' : activeLeague}</span>
+            {liveCount > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">{liveCount}</span>
+            )}
+          </div>
+          {/* Menu button */}
+          <div className="relative">
+            <button onClick={() => setMenuOpen(v => !v)}
+              className="flex items-center gap-2 bg-surface border border-white/8 px-3 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-white transition-colors"
+            >
+              <Menu size={15}/> <span className="hidden xs:block">Leagues</span>
+            </button>
+            {/* Dropdown */}
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)}/>
+                <div className="absolute right-0 top-full mt-2 w-56 bg-[#161b22] border border-white/10 rounded-2xl shadow-2xl z-40 overflow-hidden max-h-80 overflow-y-auto">
+                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">Leagues</p>
+                  <button onClick={() => { setActiveLeague('All'); setMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 ${
+                      activeLeague === 'All' ? 'bg-accent/15 text-accent' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <span className="flex-1">All Leagues</span>
+                    {activeLeague === 'All' && <span className="w-1.5 h-1.5 bg-accent rounded-full shrink-0"/>}
+                  </button>
+                  {leagues.sort().map(lg => (
+                    <button key={lg}
+                      onClick={() => { setActiveLeague(lg); setMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 last:border-0 ${
+                        activeLeague === lg ? 'bg-accent/15 text-accent' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <span className="flex-1 truncate">{lg}</span>
+                      {activeLeague === lg && <span className="w-1.5 h-1.5 bg-accent rounded-full shrink-0"/>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
