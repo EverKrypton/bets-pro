@@ -24,7 +24,7 @@ const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
 
 // All payment-originated webhook types (from docs)
 const PAYMENT_TYPES = new Set([
-  'invoice', 'white_label', 'static_address', 'payment_link', 'donation',
+  'invoice', 'white_label', 'static_address', 'payment_link', 'donation', 'payment',
 ]);
 
 function ok()  { return new Response('ok',    { status: 200 }); }
@@ -53,7 +53,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const calculated = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-  if (calculated !== hmacHeader) {
+  if (calculated.toLowerCase() !== hmacHeader.trim().toLowerCase()) {
     console.error('OxaPay webhook: HMAC mismatch');
     return bad();
   }
