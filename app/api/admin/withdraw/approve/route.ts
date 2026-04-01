@@ -33,6 +33,10 @@ export async function POST(req: Request) {
       const address = details.address;
       const amount = transaction.amount;
 
+      if (details.network !== 'BEP20') {
+        return NextResponse.json({ error: 'Only BEP20 withdrawals are supported' }, { status: 400 });
+      }
+
       const result = await sendBEP20Payout(
         address,
         amount,
@@ -44,7 +48,7 @@ export async function POST(req: Request) {
       }
 
       transaction.txId   = result.txHash;
-      transaction.status = 'completed';
+      transaction.status = result.status === 'confirmed' ? 'completed' : 'pending';
       transaction.details = { ...details, bep20TxHash: result.txHash };
       await transaction.save();
 
