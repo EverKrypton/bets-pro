@@ -7,6 +7,10 @@ import Transaction        from '@/models/Transaction';
 const VALID_ROLES = ['user', 'mod', 'recruiter', 'admin'] as const;
 type Role = typeof VALID_ROLES[number];
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export async function GET(req: Request) {
   try {
     await dbConnect();
@@ -20,9 +24,9 @@ export async function GET(req: Request) {
 
     const query = search
       ? { $or: [
-          { email:           { $regex: search, $options: 'i' } },
-          { username:        { $regex: search, $options: 'i' } },
-          { myReferralCode:  { $regex: search, $options: 'i' } },
+          { email:           { $regex: escapeRegex(search), $options: 'i' } },
+          { username:        { $regex: escapeRegex(search), $options: 'i' } },
+          { myReferralCode:  { $regex: escapeRegex(search), $options: 'i' } },
         ]}
       : {};
 

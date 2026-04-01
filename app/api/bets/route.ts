@@ -9,7 +9,7 @@ export async function GET() {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const bets = await Bet.find({ userId: user._id, game: 'sports' })
+    const bets = await Bet.find({ userId: user._id })
       .sort({ createdAt: -1 })
       .limit(50);
 

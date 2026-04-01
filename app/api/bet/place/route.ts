@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/session';
 import Bet                from '@/models/Bet';
 import Match              from '@/models/Match';
 import Settings           from '@/models/Settings';
+import User               from '@/models/User';
 
 const ALL_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
 type Market = typeof ALL_MARKETS[number];
@@ -52,10 +53,6 @@ export async function POST(req: Request) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.balance < betAmount) {
-      return NextResponse.json({ error: `Insufficient balance. You have ${user.balance.toFixed(2)} USDT` }, { status: 400 });
-    }
-
     const match = await Match.findById(matchId);
     if (!match || match.status !== 'open') {
       return NextResponse.json({ error: 'Match is not open for betting' }, { status: 400 });
@@ -85,8 +82,15 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    user.balance = parseFloat((user.balance - betAmount).toFixed(6));
-    await user.save();
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id, balance: { $gte: betAmount } },
+      { $inc: { balance: -betAmount } },
+      { new: true },
+    );
+
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
+    }
 
     const bet = await Bet.create({
       userId:     user._id,
@@ -108,7 +112,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, bet, newBalance: user.balance, potentialPayout });
+    return NextResponse.json({ success: true, bet, newBalance: updatedUser.balance, potentialPayout });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Bet error:', message);

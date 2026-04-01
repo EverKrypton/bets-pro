@@ -1,6 +1,7 @@
 import { NextResponse }   from 'next/server';
 import dbConnect          from '@/lib/db';
 import { getSessionUser } from '@/lib/session';
+import User               from '@/models/User';
 import Transaction        from '@/models/Transaction';
 
 const MIN_WITHDRAW = 10;  // USDT
@@ -26,14 +27,17 @@ export async function POST(req: Request) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (user.balance < amount) {
+    const netAmount = parseFloat((amount - FEE).toFixed(6));
+
+    const updated = await User.findOneAndUpdate(
+      { _id: user._id, balance: { $gte: amount } },
+      { $inc: { balance: -amount } },
+      { new: true },
+    );
+
+    if (!updated) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
     }
-
-    const netAmount  = parseFloat((amount - FEE).toFixed(6));
-
-    user.balance = parseFloat((user.balance - amount).toFixed(6));
-    await user.save();
 
     const transaction = await Transaction.create({
       userId:   user._id,

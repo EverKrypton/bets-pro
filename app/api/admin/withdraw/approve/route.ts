@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const admin = await getSessionUser();
-    if (!admin || !['admin', 'mod'].includes(admin.role)) {
+    if (!admin || admin.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

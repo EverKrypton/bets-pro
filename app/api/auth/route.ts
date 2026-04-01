@@ -28,6 +28,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
+    if (username && (username.trim().length < 2 || username.trim().length > 30)) {
+      return NextResponse.json({ error: 'Username must be 2-30 characters' }, { status: 400 });
+    }
+
     const normalizedEmail = String(email).toLowerCase().trim();
     const adminEmail      = process.env.ADMIN_EMAIL?.toLowerCase().trim();
 
@@ -83,7 +87,7 @@ export async function POST(req: Request) {
 
     res.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure:   process.env.NODE_ENV === 'production',
       path:     '/',
       maxAge:   60 * 60 * 24 * 30,

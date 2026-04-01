@@ -12,6 +12,11 @@ export async function POST(req: Request) {
     const { notificationId } = await req.json();
 
     if (notificationId) {
+      const notification = await Notification.findOne({
+        _id: notificationId,
+        $or: [{ type: 'global' }, { userId: user._id }],
+      });
+      if (!notification) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       await Notification.findByIdAndUpdate(notificationId, { $addToSet: { readBy: user._id } });
     } else {
       // Mark all as read
