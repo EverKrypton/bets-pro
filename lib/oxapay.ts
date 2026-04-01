@@ -51,11 +51,11 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
   const orderId = `deposit-${userId}`;
 
   const response = await axios.post<OxaPayResponse<StaticAddressData>>(
-    `${API_BASE}static-address`,
+    `https://api.oxapay.com/v1/payment/static-address`,
     {
       network: 'BSC',
       to_currency: 'USDT',
-      auto_withdrawal: 0,
+      auto_withdrawal: false,
       callback_url: callbackUrl,
       order_id: orderId,
       description: `Bets Pro deposit – user ${userId}`,
