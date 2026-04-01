@@ -34,20 +34,20 @@ export default function Home() {
       <div className="space-y-5">
 
         {/* Hero */}
-        <div className="bg-surface border border-white/8 rounded-2xl p-5">
-          <div className="flex items-start gap-4">
-            <Mascot className="w-16 h-16 shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-2xl font-black tracking-tight leading-tight">The Biggest Football Sportsbook</h1>
-              <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Real matches. Real odds. Instant USDT payouts.</p>
-              <div className="flex gap-2 mt-4">
+        <div className="bg-surface border border-white/8 rounded-2xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+            <Mascot className="w-14 h-14 sm:w-16 sm:h-16 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">The Biggest Football Sportsbook</h1>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1 leading-relaxed">Real matches. Real odds. Instant USDT payouts.</p>
+              <div className="flex gap-2 mt-3 sm:mt-4">
                 <Link href="/sports"
-                  className="flex-1 bg-accent text-white font-black text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent/90 active:scale-95 transition-all"
+                  className="flex-1 bg-accent text-white font-black text-sm py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-accent/90 active:scale-95 transition-all"
                 >
-                  Bet Now <ArrowRight size={15} />
+                  Bet Now <ArrowRight size={14} />
                 </Link>
                 <Link href="/wallet"
-                  className="flex-1 bg-background border border-white/10 text-white font-black text-sm py-3 rounded-xl flex items-center justify-center hover:border-white/20 active:scale-95 transition-all"
+                  className="flex-1 bg-background border border-white/10 text-white font-black text-sm py-2.5 sm:py-3 rounded-xl flex items-center justify-center hover:border-white/20 active:scale-95 transition-all"
                 >
                   Deposit
                 </Link>
@@ -57,15 +57,15 @@ export default function Home() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
-            { label:'Min Deposit',  value:`${minDeposit} USDT` },
-            { label:'Min Withdraw', value:'10 USDT'   },
-            { label:'Referral',     value:'Up to 30%' },
+            { label:'Min Deposit',  value:`${minDeposit}`, unit:'USDT' },
+            { label:'Min Withdraw', value:'10', unit:'USDT'   },
+            { label:'Referral',     value:'30%', unit:'' },
           ].map(s => (
-            <div key={s.label} className="bg-surface border border-white/8 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
-              <p className="font-black text-sm text-primary mt-1">{s.value}</p>
+            <div key={s.label} className="bg-surface border border-white/8 rounded-xl p-2.5 sm:p-3 text-center">
+              <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
+              <p className="font-black text-base sm:text-sm text-primary mt-0.5">{s.value} <span className="text-xs text-gray-400">{s.unit}</span></p>
             </div>
           ))}
         </div>

@@ -368,19 +368,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom nav - mobile only */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0d1117]/95 backdrop-blur-sm border-t border-white/8 z-40 lg:hidden">
-        <div className="flex justify-around items-stretch">
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#0d1117]/95 backdrop-blur-md border-t border-white/10 z-40 lg:hidden safe-area-inset-bottom">
+        <div className="flex justify-around items-center h-14">
           {navItems.map(item => {
             const isActive = pathname === item.path;
             return (
               <button key={item.name} onClick={() => router.push(item.path)}
-                className={`flex flex-col items-center justify-center py-2 px-2 min-w-0 flex-1 relative transition-all ${isActive?'text-accent':'text-gray-600 hover:text-gray-400'}`}
+                className={`flex flex-col items-center justify-center py-1.5 px-3 min-w-0 flex-1 relative transition-all ${isActive?'text-accent':'text-gray-500 hover:text-gray-300'}`}
               >
                 {isActive && (
-                  <motion.div layoutId="nav-active" className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-accent rounded-full"/>
+                  <motion.div layoutId="nav-active" className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-accent rounded-full"/>
                 )}
-                <item.icon size={18}/>
-                <span className={`text-[9px] font-bold mt-0.5 ${isActive?'text-accent':'text-gray-600'}`}>{item.name}</span>
+                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2}/>
+                <span className={`text-[10px] font-bold mt-0.5 ${isActive?'text-accent':'text-gray-500'}`}>{item.name}</span>
               </button>
             );
           })}
