@@ -7,9 +7,6 @@
 
 import axios from 'axios';
 
-const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
-
 const API_BASE = 'https://api.oxapay.com/';
 
 interface OxaPayLegacyResponse {
@@ -32,55 +29,75 @@ export interface StaticAddressResult {
 }
 
 export async function createStaticAddress(userId: string): Promise<{ data: StaticAddressResult }> {
-  if (!MERCHANT_KEY) {
+  const merchantKey = process.env.OXAPAY_MERCHANT_API_KEY;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+
+  if (!merchantKey) {
+    console.error('OXAPAY_MERCHANT_API_KEY is not set in environment');
     throw new Error('OXAPAY_MERCHANT_API_KEY not configured');
   }
-  if (!APP_URL) {
+  if (!appUrl) {
+    console.error('NEXT_PUBLIC_APP_URL is not set in environment');
     throw new Error('NEXT_PUBLIC_APP_URL not configured');
   }
 
-  const callbackUrl = `${APP_URL}/api/webhook/oxapay`;
+  const callbackUrl = `${appUrl}/api/webhook/oxapay`;
   const orderId = `deposit-${userId}`;
 
-  const response = await axios.post<OxaPayLegacyResponse>(
-    `${API_BASE}merchants/request/staticaddress`,
-    {
-      merchant: MERCHANT_KEY,
-      network: 'BSC',
-      currency: 'USDT',
-      callback_url: callbackUrl,
-      order_id: orderId,
-      description: `Bets Pro deposit – user ${userId}`,
+  console.log('[OxaPay] Creating static address for user:', userId);
+  console.log('[OxaPay] Callback URL:', callbackUrl);
+  console.log('[OxaPay] Merchant key length:', merchantKey?.length);
+
+  try {
+    const response = await axios.post<OxaPayLegacyResponse>(
+      `${API_BASE}merchants/request/staticaddress`,
+      {
+        merchant: merchantKey,
+        network: 'BSC',
+        currency: 'USDT',
+        callback_url: callbackUrl,
+        order_id: orderId,
+        description: `Bets Pro deposit – user ${userId}`,
+      }
+    );
+
+    const result = response.data;
+
+    // result 100 = success
+    if (result.result !== 100 || !result.data) {
+      console.error('[OxaPay] Error response:', JSON.stringify(result));
+      const errMsg = result.message || `OxaPay error: ${result.result}`;
+      throw new Error(errMsg);
     }
-  );
 
-  const result = response.data;
+    console.log('[OxaPay] Success! Address:', result.data.address);
 
-  // result 100 = success
-  if (result.result !== 100 || !result.data) {
-    const errMsg = result.message || `OxaPay error: ${result.result}`;
-    throw new Error(errMsg);
+    return {
+      data: {
+        address: result.data.address ?? '',
+        network: result.data.network ?? 'BSC',
+        currency: 'USDT',
+        track_id: result.data.track_id ?? '',
+      },
+    };
+  } catch (error: any) {
+    console.error('[OxaPay] Request failed:', error?.message);
+    console.error('[OxaPay] Response:', error?.response?.data);
+    throw error;
   }
-
-  return {
-    data: {
-      address: result.data.address ?? '',
-      network: result.data.network ?? 'BSC',
-      currency: 'USDT',
-      track_id: result.data.track_id ?? '',
-    },
-  };
 }
 
 export async function getPaymentInfo(trackId: string): Promise<OxaPayLegacyResponse> {
-  if (!MERCHANT_KEY) {
+  const merchantKey = process.env.OXAPAY_MERCHANT_API_KEY;
+
+  if (!merchantKey) {
     throw new Error('OXAPAY_MERCHANT_API_KEY not configured');
   }
 
   const response = await axios.post<OxaPayLegacyResponse>(
     `${API_BASE}merchants/inquiry`,
     {
-      merchant: MERCHANT_KEY,
+      merchant: merchantKey,
       track_id: trackId,
     }
   );
