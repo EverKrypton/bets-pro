@@ -338,7 +338,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[#0d1117]/50">
           <div className="flex items-center gap-4">
             <span className="text-sm font-bold text-gray-500">{user?.username || user?.email}</span>
-            {user?.role !== 'user' && (
+            {user && user.role !== 'user' && (
               <span className="text-[10px] font-black uppercase px-2 py-1 rounded-full bg-accent/20 text-accent border border-accent/30">{user.role}</span>
             )}
           </div>
