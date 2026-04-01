@@ -465,7 +465,14 @@ export default function WalletPage() {
                         <p className="text-[10px] text-gray-500 mt-0.5">{new Date(tx.createdAt).toLocaleString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-black text-sm">{tx.amount.toFixed(2)} USDT</p>
+                        {tx.type === 'withdraw' && tx.details?.grossAmount ? (
+                          <>
+                            <p className="font-black text-sm text-red-400">-{tx.details.grossAmount.toFixed(2)} USDT</p>
+                            <p className="text-[9px] text-gray-500">Fee: 1 USDT · Net: {tx.amount.toFixed(2)}</p>
+                          </>
+                        ) : (
+                          <p className="font-black text-sm">{tx.amount.toFixed(2)} USDT</p>
+                        )}
                         <p className={`text-[10px] font-black uppercase ${STATUS_COLOR[tx.status] ?? 'text-gray-400'}`}>{tx.status}</p>
                       </div>
                     </div>
