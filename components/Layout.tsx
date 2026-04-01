@@ -290,44 +290,42 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Top header - mobile only */}
-        <header className="sticky top-0 z-40 bg-[#0d1117]/95 backdrop-blur-sm border-b border-white/8 px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-40 bg-[#0d1117]/95 backdrop-blur-md border-b border-white/10 px-3 py-2.5 lg:hidden">
           <div className="flex items-center gap-2">
-            <button onClick={() => setSideNav(true)} className="w-9 h-9 rounded-xl bg-surface border border-white/8 flex items-center justify-center text-gray-400 hover:text-white transition-colors shrink-0">
-              <Menu size={16}/>
+            <button onClick={() => setSideNav(true)} className="w-9 h-9 rounded-xl bg-surface border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors shrink-0 active:scale-95">
+              <Menu size={18}/>
             </button>
-            <Link href="/" className="flex items-center gap-2 shrink-0">
+            <Link href="/" className="flex items-center gap-1.5 shrink-0">
               <Mascot className="w-7 h-7"/>
-              <span className="font-black text-sm tracking-wider">BETS PRO</span>
+              <span className="font-black text-sm tracking-wide">BETS</span>
             </Link>
             <div className="flex-1"/>
             {user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Link href="/wallet" className="flex items-center gap-1 bg-surface border border-white/10 px-2.5 py-1 rounded-lg hover:border-accent/40 transition-colors">
+                  <Wallet size={12} className="text-accent"/>
+                  <span className="font-black text-xs">{user.balance?.toFixed(2)}</span>
+                </Link>
                 <button onClick={() => { setNotifOpen(v=>!v); if (!notifOpen) fetchNotifications(); }}
-                  className="relative w-9 h-9 rounded-xl bg-surface border border-white/8 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  className="relative w-9 h-9 rounded-xl bg-surface border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors active:scale-95"
                 >
                   <Bell size={15}/>
                   {unread > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">
                       {unread > 9 ? '9+' : unread}
                     </span>
                   )}
                 </button>
-                <Link href="/wallet" className="flex items-center gap-1.5 bg-surface border border-white/8 px-3 py-1.5 rounded-lg hover:border-accent/40 transition-colors">
-                  <Wallet size={13} className="text-accent"/>
-                  <span className="font-black text-sm">{user.balance?.toFixed(2)}</span>
-                  <span className="text-[10px] text-gray-500 font-bold">USDT</span>
-                </Link>
-                <Link href="/wallet" className="bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-accent/90 transition-colors">+</Link>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/login" className="border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold hover:border-white/20 transition-colors flex items-center gap-1">
-                  <LogIn size={12}/> Login
+              <div className="flex items-center gap-1.5">
+                <Link href="/login" className="border border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold hover:border-white/20 transition-colors">
+                  Login
                 </Link>
-                <Link href="/register" className="bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-accent/90 transition-colors flex items-center gap-1">
-                  <UserPlus size={12}/> Register
+                <Link href="/register" className="bg-gradient-to-r from-accent to-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-black">
+                  Join
                 </Link>
               </div>
             )}
