@@ -1,6 +1,6 @@
 /**
  * OxaPay API Client (Direct HTTP calls)
- * Docs: https://docs.oxapay.com/api-payment
+ * Docs: https://docs.oxapay.com/api-payment/
  * 
  * NOTE: Only used for DEPOSITS. Withdrawals use custom BEP20 module (lib/bep20.ts)
  */
@@ -10,7 +10,27 @@ import axios from 'axios';
 const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
 
-const API_BASE = 'https://api.oxapay.com/v1/payment';
+const API_BASE = 'https://api.oxapay.com/v1/payment/';
+
+interface OxaPayResponse<T> {
+  data: T;
+  message: string;
+  error?: {
+    type: string;
+    key: string;
+    message: string;
+  };
+  status: number;
+  version: string;
+}
+
+interface StaticAddressData {
+  track_id: string;
+  network: string;
+  address: string;
+  qr_code: string;
+  date: number;
+}
 
 export interface StaticAddressResult {
   address: string;
@@ -30,8 +50,8 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
   const callbackUrl = `${APP_URL}/api/webhook/oxapay`;
   const orderId = `deposit-${userId}`;
 
-  const response = await axios.post(
-    `${API_BASE}/staticaddress`,
+  const response = await axios.post<OxaPayResponse<StaticAddressData>>(
+    `${API_BASE}static-address`,
     {
       network: 'BSC',
       to_currency: 'USDT',
@@ -48,30 +68,30 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
     }
   );
 
-  const data = response.data;
+  const result = response.data;
 
-  if (data.status !== 200 || !data.result) {
-    const errMsg = data.message || data.error || `OxaPay error: ${data.status}`;
-    throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+  if (result.status !== 200 || !result.data) {
+    const errMsg = result.error?.message || result.message || `OxaPay error: ${result.status}`;
+    throw new Error(errMsg);
   }
 
   return {
     data: {
-      address: data.result.address,
-      network: data.result.network || 'BSC',
+      address: result.data.address,
+      network: result.data.network,
       currency: 'USDT',
-      track_id: data.result.track_id || data.result.trackId,
+      track_id: result.data.track_id,
     },
   };
 }
 
-export async function getPaymentInfo(trackId: string): Promise<any> {
+export async function getPaymentInfo(trackId: string): Promise<OxaPayResponse<any>> {
   if (!MERCHANT_KEY) {
     throw new Error('OXAPAY_MERCHANT_API_KEY not configured');
   }
 
-  const response = await axios.get(
-    `${API_BASE}/paymentinfo/${trackId}`,
+  const response = await axios.get<OxaPayResponse<any>>(
+    `${API_BASE}${trackId}`,
     {
       headers: {
         'merchant_api_key': MERCHANT_KEY,
