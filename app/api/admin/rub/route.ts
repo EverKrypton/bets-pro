@@ -9,7 +9,7 @@ export async function GET() {
   try {
     await dbConnect();
     const admin = await getSessionUser();
-    if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (!admin || !['admin','mod'].includes(admin.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     const deposits = await RubDeposit.find({ status: 'pending' })
       .populate('userId', 'username email')
       .sort({ createdAt: -1 });
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   try {
     await dbConnect();
     const admin = await getSessionUser();
-    if (!admin || admin.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (!admin || !['admin','mod'].includes(admin.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const { id, action, adminNote } = await req.json();
     if (!id || !['approve','reject'].includes(action)) {

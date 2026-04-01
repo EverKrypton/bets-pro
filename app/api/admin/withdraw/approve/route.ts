@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const admin = await getSessionUser();
-    if (!admin || admin.role !== 'admin') {
+    if (!admin || !['admin', 'mod'].includes(admin.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -26,14 +26,18 @@ export async function POST(req: Request) {
     }
 
     if (action === 'approve') {
-      const { address, network } = transaction.details as { address: string; network: string };
-      // amount already has the 1 USDT fee deducted at request time
-      const oxaResponse    = await createPayout(
+      const details = transaction.details as { address: string; network: string; grossAmount?: number };
+      const address = details.address;
+      const network = details.network || 'BEP20';
+
+      // transaction.amount = net amount (after 1 USDT fee already deducted)
+      const oxaResponse = await createPayout(
         address,
-        transaction.amount,
-        network || 'BEP20',
-        `FCC withdrawal tx ${transactionId}`,
+        transaction.amount,   // number — OxaPay requires decimal, not string
+        network,
+        `Bets Pro withdrawal tx ${transactionId}`,
       );
+
       transaction.txId   = oxaResponse.data.track_id;
       transaction.status = 'completed';
       await transaction.save();
@@ -41,10 +45,8 @@ export async function POST(req: Request) {
       transaction.status = 'rejected';
       await transaction.save();
 
-      // Refund the full amount the user requested (before fee) back to their balance
       const user = await User.findById(transaction.userId);
       if (user) {
-        // The stored amount is already net (after fee), refund the gross amount
         const gross      = parseFloat(((transaction.details as any)?.grossAmount ?? transaction.amount).toString());
         user.balance     = parseFloat((user.balance + gross).toFixed(6));
         await user.save();
