@@ -53,7 +53,7 @@ export default function ReferralsPage() {
         </h1>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div className="bg-surface rounded-2xl border border-white/8 p-3 text-center">
             <UserPlus size={16} className="text-primary mx-auto mb-1"/>
             <p className="text-2xl font-black">{loading ? '—' : stats.referredUsers}</p>

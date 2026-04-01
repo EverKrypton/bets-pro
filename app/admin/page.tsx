@@ -426,47 +426,72 @@ export default function AdminPage() {
 
         {/* Nav: current section + menu button */}
         <div className="flex items-center gap-2">
-          {/* Active tab pill */}
-          <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-4 py-2.5">
-            {(() => { const t = TABS.find(t => t.key === activeTab); return t ? <><t.icon size={14} className="text-accent shrink-0"/><span className="font-black text-sm text-white">{t.label}</span></> : null; })()}
-            {(() => { const t = TABS.find(t => t.key === activeTab); return t?.badge ? <span className="ml-auto bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shrink-0">{t.badge > 9 ? '9+' : t.badge}</span> : null; })()}
+          {/* Desktop: horizontal tabs */}
+          <div className="hidden lg:flex bg-surface border border-white/8 rounded-xl p-1 gap-1">
+            {TABS.map(tab => (
+              <button key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? 'bg-accent text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <tab.icon size={14} />
+                {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center ${
+                    activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
+                  }`}>
+                    {tab.badge > 9 ? '9+' : tab.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
-          {/* Menu button */}
-          <div className="relative">
-            <button onClick={() => setMenuOpen(v => !v)}
-              className="flex items-center gap-2 bg-surface border border-white/8 px-3 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-white transition-colors"
-            >
-              <Menu size={15}/> <span className="hidden xs:block">Menu</span>
-              {TABS.reduce((sum,t) => sum + (t.badge ?? 0), 0) > 0 && (
-                <span className="w-2 h-2 bg-red-500 rounded-full absolute top-1.5 right-1.5"/>
+          {/* Mobile: active tab pill + dropdown */}
+          <div className="flex-1 flex items-center gap-2 lg:hidden">
+            <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-4 py-2.5">
+              {(() => { const t = TABS.find(t => t.key === activeTab); return t ? <><t.icon size={14} className="text-accent shrink-0"/><span className="font-black text-sm text-white">{t.label}</span></> : null; })()}
+              {(() => { const t = TABS.find(t => t.key === activeTab); return t?.badge ? <span className="ml-auto bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shrink-0">{t.badge > 9 ? '9+' : t.badge}</span> : null; })()}
+            </div>
+            {/* Menu button */}
+            <div className="relative">
+              <button onClick={() => setMenuOpen(v => !v)}
+                className="flex items-center gap-2 bg-surface border border-white/8 px-3 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-white transition-colors"
+              >
+                <Menu size={15}/> <span className="hidden xs:block">Menu</span>
+                {TABS.reduce((sum,t) => sum + (t.badge ?? 0), 0) > 0 && (
+                  <span className="w-2 h-2 bg-red-500 rounded-full absolute top-1.5 right-1.5"/>
+                )}
+              </button>
+              {/* Dropdown */}
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)}/>
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-[#161b22] border border-white/10 rounded-2xl shadow-2xl z-40 overflow-hidden">
+                    <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">Admin Panel</p>
+                    {TABS.map(tab => (
+                      <button key={tab.key}
+                        onClick={() => { setActiveTab(tab.key); setMenuOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 last:border-0 ${
+                          activeTab === tab.key ? 'bg-accent/15 text-accent' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <tab.icon size={15} className={activeTab === tab.key ? 'text-accent' : 'text-gray-500'}/>
+                        <span className="flex-1">{tab.label}</span>
+                        {tab.badge !== undefined && tab.badge > 0 && (
+                          <span className="bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                            {tab.badge > 9 ? '9+' : tab.badge}
+                          </span>
+                        )}
+                        {activeTab === tab.key && <span className="w-1.5 h-1.5 bg-accent rounded-full shrink-0"/>}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
-            </button>
-            {/* Dropdown */}
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)}/>
-                <div className="absolute right-0 top-full mt-2 w-56 bg-[#161b22] border border-white/10 rounded-2xl shadow-2xl z-40 overflow-hidden">
-                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">Admin Panel</p>
-                  {TABS.map(tab => (
-                    <button key={tab.key}
-                      onClick={() => { setActiveTab(tab.key); setMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 last:border-0 ${
-                        activeTab === tab.key ? 'bg-accent/15 text-accent' : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <tab.icon size={15} className={activeTab === tab.key ? 'text-accent' : 'text-gray-500'}/>
-                      <span className="flex-1">{tab.label}</span>
-                      {tab.badge !== undefined && tab.badge > 0 && (
-                        <span className="bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                          {tab.badge > 9 ? '9+' : tab.badge}
-                        </span>
-                      )}
-                      {activeTab === tab.key && <span className="w-1.5 h-1.5 bg-accent rounded-full shrink-0"/>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            </div>
           </div>
         </div>
 

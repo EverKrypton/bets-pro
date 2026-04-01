@@ -57,7 +57,7 @@ export default function Home() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {[
             { label:'Min Deposit',  value:`${minDeposit} USDT` },
             { label:'Min Withdraw', value:'10 USDT'   },
