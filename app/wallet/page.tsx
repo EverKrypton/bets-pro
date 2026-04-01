@@ -115,7 +115,8 @@ export default function WalletPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        notify(`Submitted! You will receive ${data.netAmount} USDT after 1 USDT fee.`, true);
+        const txId = data.transaction?._id?.slice(-8) || 'N/A';
+        notify(`✓ Withdrawal submitted!\nAmount: ${amt} USDT → ${data.netAmount} USDT (after 1 USDT fee)\nTx: #${txId}`, true);
         setAmount(''); setAddress(''); fetchMe(); fetchHistory();
       } else notify(data.error || 'Failed', false);
     } finally { setLoading(false); }
