@@ -22,9 +22,11 @@ const STATUS_COLOR: Record<string,string> = {
 
 export default function Home() {
   const [recentBets, setRecentBets] = useState<RecentBet[]>([]);
+  const [minDeposit, setMinDeposit] = useState(10);
 
   useEffect(() => {
     fetch('/api/bets/recent').then(r => r.ok ? r.json() : { bets:[] }).then(d => setRecentBets(d.bets ?? [])).catch(()=>{});
+    fetch('/api/settings/public').then(r => r.ok ? r.json() : {}).then(d => setMinDeposit(d.minDepositAmount ?? 10)).catch(()=>{});
   }, []);
 
   return (
@@ -57,7 +59,7 @@ export default function Home() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label:'Min Deposit',  value:'10 USDT'   },
+            { label:'Min Deposit',  value:`${minDeposit} USDT` },
             { label:'Min Withdraw', value:'10 USDT'   },
             { label:'Referral',     value:'Up to 30%' },
           ].map(s => (

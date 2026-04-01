@@ -7,6 +7,7 @@ export async function GET() {
     await dbConnect();
     const settings = await Settings.findOne({ key: 'global' });
     return NextResponse.json({
+      minDepositAmount:     settings?.minDepositAmount     ?? 10,
       minBetAmount:         settings?.minBetAmount         ?? 1,
       maxBetAmount:         settings?.maxBetAmount         ?? 50,
       maxPotentialPayout:   settings?.maxPotentialPayout   ?? 200,
@@ -15,6 +16,6 @@ export async function GET() {
       rubBankDetails:       settings?.rubBankDetails       ?? '',
     });
   } catch {
-    return NextResponse.json({ minBetAmount:1, maxBetAmount:50, maxPotentialPayout:200, liveScoreRefreshSecs:30, rubUsdRate:90, rubBankDetails:'' });
+    return NextResponse.json({ minDepositAmount:10, minBetAmount:1, maxBetAmount:50, maxPotentialPayout:200, liveScoreRefreshSecs:30, rubUsdRate:90, rubBankDetails:'' });
   }
 }

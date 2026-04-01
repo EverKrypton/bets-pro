@@ -33,7 +33,8 @@ export default function WalletPage() {
   const [rubRate, setRubRate]               = useState(90);
   const [rubBankDetails, setRubBankDetails] = useState('');
   const [rubSubmitted,  setRubSubmitted]     = useState(false);
-  const [rubUsdPreview, setRubUsdPreview]   = useState(0);
+  const [rubUsdPreview, setRubUsdPreview] = useState(0);
+  const [minDeposit, setMinDeposit]       = useState(10);
   const [curPass,       setCurPass]         = useState('');
   const [newPass,       setNewPass]         = useState('');
   const [confPass,      setConfPass]        = useState('');
@@ -61,6 +62,7 @@ export default function WalletPage() {
     const data = await res.json();
     setRubRate(data.rubUsdRate ?? 90);
     setRubBankDetails(data.rubBankDetails ?? '');
+    setMinDeposit(data.minDepositAmount ?? 10);
   };
 
   const notify = (msg: string, ok: boolean) => {
@@ -210,7 +212,7 @@ export default function WalletPage() {
                 <p className="text-sm font-bold text-white mb-0.5">USDT via BEP20 (BSC)</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   Send USDT on BNB Smart Chain to your personal address. Minimum{' '}
-                  <span className="text-yellow-400 font-bold">10 USDT</span>. Credited automatically after confirmation.
+                  <span className="text-yellow-400 font-bold">{minDeposit} USDT</span>. Credited automatically after confirmation.
                 </p>
               </div>
             </div>

@@ -33,6 +33,7 @@ interface HouseSettings {
   maxBetAmount: number; maxPotentialPayout: number; minBetAmount: number;
   autoCloseMinutes: number; houseReserve: number; liveScoreRefreshSecs: number;
   footballDataApiKey: string; rubUsdRate: number; rubBankDetails: string;
+  minDepositAmount: number;
 }
 interface Withdrawal {
   _id: string; userId: { username: string; email: string }; amount: number;
@@ -78,6 +79,7 @@ const SETTINGS_DEFAULTS: HouseSettings = {
   maxBetAmount: 50, maxPotentialPayout: 200, minBetAmount: 1,
   autoCloseMinutes: 30, houseReserve: 0, liveScoreRefreshSecs: 30,
   footballDataApiKey: '', rubUsdRate: 90, rubBankDetails: '',
+  minDepositAmount: 10,
 };
 
 export default function AdminPage() {
@@ -690,6 +692,7 @@ export default function AdminPage() {
                 <Settings size={12} className="text-accent" /> Bet Limits
               </p>
               {[
+                { key:'minDepositAmount',     label:'Min Deposit (USDT)',      hint:'Minimum deposit amount',                 type:'number' },
                 { key:'minBetAmount',         label:'Min Bet (USDT)',          hint:'Minimum a user can bet',                 type:'number' },
                 { key:'maxBetAmount',         label:'Max Bet (USDT)',          hint:'Maximum per single bet',                 type:'number' },
                 { key:'maxPotentialPayout',   label:'Max Payout (USDT)',       hint:'Max a user can win per bet',             type:'number' },
