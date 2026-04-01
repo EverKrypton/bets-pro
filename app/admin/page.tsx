@@ -103,6 +103,7 @@ export default function AdminPage() {
 
   const [editingId,       setEditingId]       = useState<string | null>(null);
   const [oddsForm,        setOddsForm]        = useState({ home: '', draw: '', away: '', status: 'open', moneyBack: false });
+  const [quickOdds,      setQuickOdds]       = useState('');
   const [settlingId,      setSettlingId]      = useState<string | null>(null);
   const [settleResult,    setSettleResult]    = useState<'home'|'draw'|'away'>('home');
   const [expandedApp,     setExpandedApp]     = useState<string | null>(null);
@@ -246,6 +247,28 @@ export default function AdminPage() {
     const data = await res.json();
     if (res.ok) { notify('Odds saved!', true); setEditingId(null); fetchMatches(); fetchExposure(); }
     else notify(data.error || 'Save failed', false);
+  };
+
+  // Calculate distributed odds from a single input (fair odds range)
+  const calcQuickOdds = (base: number) => {
+    if (!base || base < 1.1) return;
+    // Use realistic probability distribution with slight variation
+    const bookMargin = 0.05; // 5% bookmaker margin
+    const homeProb = 0.45 + (Math.random() * 0.15); // Home wins 45-60%
+    const drawProb = 0.22 + (Math.random() * 0.10); // Draw 22-32%
+    const awayProb = 1 - homeProb - drawProb; // Away gets remainder
+    
+    const home = Math.round((1 / (homeProb * (1 + bookMargin))) * 100) / 100;
+    const draw = Math.round((1 / (drawProb * (1 + bookMargin))) * 100) / 100;
+    const away = Math.round((1 / (awayProb * (1 + bookMargin))) * 100) / 100;
+    
+    // Scale to approximately match the base value
+    const scale = base / ((home + draw + away) / 3);
+    const finalHome = Math.max(1.01, Math.round(home / scale * 100) / 100);
+    const finalDraw = Math.max(1.01, Math.round(draw / scale * 100) / 100);
+    const finalAway = Math.max(1.01, Math.round(away / scale * 100) / 100);
+    
+    setOddsForm(f => ({ ...f, home: finalHome.toFixed(2), draw: finalDraw.toFixed(2), away: finalAway.toFixed(2) }));
   };
 
   const settleMatch = async (matchId: string) => {
@@ -587,8 +610,21 @@ export default function AdminPage() {
                   </div>
 
                   {editingId === match._id && (
-                    <div className="border-t border-white/5 p-4 bg-background/20 space-y-3">
+                    <div className="border-t border-white/5 p-3 sm:p-4 bg-background/20 space-y-3">
                       <p className="text-[10px] font-black uppercase tracking-wider text-gray-600">Set Odds (what users see)</p>
+                      
+                      {/* Quick Odds */}
+                      <div className="flex gap-2">
+                        <input type="number" step="0.01" min="1.1" value={quickOdds}
+                          onChange={e => setQuickOdds(e.target.value)}
+                          placeholder="Quick odds (e.g. 2.50)"
+                          className="flex-1 bg-background border border-white/8 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-accent/50"
+                        />
+                        <button onClick={() => calcQuickOdds(parseFloat(quickOdds) || 0)}
+                          className="px-3 py-2 bg-primary/10 text-primary border border-primary/30 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
+                        >Auto</button>
+                      </div>
+                      
                       <div className="grid grid-cols-3 gap-2">
                         {(['home','draw','away'] as const).map(sel => (
                           <div key={sel}>
@@ -601,22 +637,22 @@ export default function AdminPage() {
                           </div>
                         ))}
                       </div>
-                      <label className="flex items-center gap-3 bg-background border border-white/8 rounded-xl px-4 py-3 cursor-pointer">
+                      <label className="flex items-center gap-3 bg-background border border-white/8 rounded-xl px-3 py-2 cursor-pointer">
                         <input type="checkbox" checked={oddsForm.moneyBack}
                           onChange={e => setOddsForm({...oddsForm, moneyBack: e.target.checked})}
-                          className="w-4 h-4 accent-green-500"
+                          className="w-4 h-4 accent-green-500 shrink-0"
                         />
                         <div>
-                          <p className="text-xs font-black text-white">💰 Money Back if they lose</p>
-                          <p className="text-[10px] text-gray-500">Losers get stake refunded on settle</p>
+                          <p className="text-xs font-black text-white">💰 Money Back</p>
+                          <p className="text-[9px] text-gray-500">Losers get stake refunded</p>
                         </div>
                       </label>
                       <select value={oddsForm.status} onChange={e => setOddsForm({...oddsForm, status: e.target.value})}
                         className="w-full bg-background border border-white/8 rounded-lg px-3 py-2 text-sm font-bold outline-none"
                       >
-                        <option value="pending">Pending (hidden from users)</option>
-                        <option value="open">Open (users can bet)</option>
-                        <option value="closed">Closed (no more bets)</option>
+                        <option value="pending">Pending (hidden)</option>
+                        <option value="open">Open (betting active)</option>
+                        <option value="closed">Closed (no bets)</option>
                       </select>
                       <button onClick={() => saveOdds(match._id)} className="w-full py-2.5 bg-accent text-white rounded-xl font-black text-sm uppercase hover:opacity-90">Save</button>
                     </div>
