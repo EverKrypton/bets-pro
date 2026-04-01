@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Odds  { home: number; draw: number; away: number; }
 interface Match {

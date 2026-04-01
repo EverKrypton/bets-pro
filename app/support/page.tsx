@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { MessageSquare, Plus, Send, ChevronLeft, Clock, CheckCircle2, XCircle, Loader2, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   _id: string;

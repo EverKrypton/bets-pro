@@ -6,7 +6,7 @@ import {
   ArrowDownToLine, ArrowUpFromLine, Copy, CheckCircle2,
   Loader2, Clock, CreditCard, Info, Send, KeyRound,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface Tx { _id: string; type: string; amount: number; status: string; createdAt: string; details?: any; }
 
@@ -186,7 +186,7 @@ export default function WalletPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex bg-surface border border-white/8 rounded-xl p-1 gap-1">
+        <div className="flex bg-surface border border-white/8 rounded-xl p-1 gap-1 overflow-x-auto scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
           {TABS.map(tab => (
             <button key={tab.key}
               onClick={() => {
@@ -194,7 +194,7 @@ export default function WalletPage() {
                 setRubSubmitted(false);
                 if (tab.key === 'history') fetchHistory();
               }}
-              className={`flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
+              className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 whitespace-nowrap shrink-0 ${
                 activeTab === tab.key ? 'bg-accent text-white' : 'text-gray-500 hover:text-white'
               }`}
             >
