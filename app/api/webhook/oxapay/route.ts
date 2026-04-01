@@ -41,6 +41,7 @@ export async function POST(req: Request): Promise<Response> {
   // Exact field name from docs: "type"
   const type   = body.type   as string | undefined;
   const status = body.status as string | undefined;
+  console.log('OxaPay webhook received:', { type, status, track_id: body.track_id });
 
   // Pick the right key for HMAC validation
   const secret = type && PAYMENT_TYPES.has(type) ? MERCHANT_KEY
@@ -87,10 +88,24 @@ export async function POST(req: Request): Promise<Response> {
       if (!user) console.error('OxaPay webhook: user not found from order_id', userId);
     }
 
+
     if (!user && address) {
       user = await User.findOne({ depositAddress: address });
       if (!user) console.error('OxaPay webhook: user not found from address', address);
     }
+
+    if (!user && track_id) {
+      user = await User.findOne({ depositTrackId: track_id });
+      if (!user) console.error('OxaPay webhook: user not found from track_id', track_id);
+    }
+
+
+
+    if (!user && address) {
+      user = await User.findOne({ depositAddress: address });
+      if (!user) console.error('OxaPay webhook: user not found from address', address);
+    }
+
 
     if (!user) {
       console.error('OxaPay webhook: unable to resolve user. order_id:', order_id, 'address:', address);
@@ -121,6 +136,7 @@ export async function POST(req: Request): Promise<Response> {
       type:   'personal',
       icon:   '💰',
     });
+    console.log('OxaPay webhook: deposit credited', { userId: user._id.toString(), amount, track_id });
 
     // Referral bonus
     if (user.referrerCode) {
@@ -179,6 +195,10 @@ export async function POST(req: Request): Promise<Response> {
         }
       }
     }
+  }
+
+  if (type && PAYMENT_TYPES.has(type) && status !== 'Paid') {
+    console.log('OxaPay webhook: payment event ignored due to status', { status, track_id });
   }
 
   return ok();

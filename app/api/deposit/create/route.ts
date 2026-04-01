@@ -24,9 +24,10 @@ export async function POST() {
     }
 
     const oxaResponse           = await createStaticAddress(user._id.toString());
-    const { address, network }  = oxaResponse.data;
+    const { address, network, track_id }  = oxaResponse.data;
 
     user.depositAddress = address;
+    user.depositTrackId = track_id;
     await user.save();
 
     return NextResponse.json({ address, currency: 'USDT', network: network || 'BSC (BEP20)', minimum: minDeposit });

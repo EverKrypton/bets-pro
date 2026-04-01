@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema(
     username:         { type: String, default: '' },
     balance:          { type: Number, default: 0 },
     depositAddress:   { type: String, default: '' },
+    depositTrackId:   { type: String, default: '' },
     // Roles:
     //   user      — default, can bet and deposit
     //   mod       — access to support/withdrawals/RUB deposits panel
