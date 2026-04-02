@@ -300,7 +300,7 @@ export default function BonusesPage() {
               {bonus.status === 'claimed' && (
                 <div className="flex items-center justify-center gap-3 py-3 text-green-400">
                   <CheckCircle size={20}/>
-                  <span className="font-bold">Bonus claimed on {new Date(bonus.claimedAt!).toLocaleDateString()}</span>
+                  <span className="font-bold text-sm sm:text-base">{t.bonus.claimedOn} {new Date(bonus.claimedAt!).toLocaleDateString()}</span>
                 </div>
               )}
             </div>
@@ -344,13 +344,13 @@ export default function BonusesPage() {
             transition={{ delay: 0.2 }}
             className="bg-[#161b22] border border-white/10 rounded-2xl p-5"
           >
-            <h4 className="text-sm font-bold text-white mb-2">Need More Referrals?</h4>
-            <p className="text-xs text-gray-500 mb-3">Share your referral link and get friends to deposit to unlock your bonus!</p>
+            <h4 className="text-sm font-bold text-white mb-2">{t.bonus.needMoreReferrals}</h4>
+            <p className="text-xs sm:text-sm text-gray-500 mb-3">{t.bonus.referralLinkSubtitle}</p>
             <a
               href="/referrals"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-bold text-white transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs sm:text-sm font-bold text-white transition-colors"
             >
-              View Referral Link <ChevronRight size={14}/>
+              {t.bonus.viewReferralLink} <ChevronRight size={14}/>
             </a>
           </motion.div>
         </div>
@@ -371,53 +371,53 @@ export default function BonusesPage() {
         <div className="space-y-4">
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>{t.bonus.faq1Question}</span>
-              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+              <span>{t.bonus.faq1Q}</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform shrink-0"/>
             </summary>
-            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              {t.bonus.faq1Answer}
+            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed">
+              {t.bonus.faq1A}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>{t.bonus.faq2Question}</span>
-              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+              <span>{t.bonus.faq2Q}</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform shrink-0"/>
             </summary>
-            <div className="mt-2 text-xs text-gray-400 leading-relaxed space-y-2">
-              <p>• {t.bonus.faq2Answer1}</p>
-              <p>• {t.bonus.faq2Answer2}</p>
-              <p>• {t.bonus.faq2Answer3}</p>
+            <div className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed space-y-2">
+              <p>• {t.bonus.requirement1}</p>
+              <p>• {t.bonus.requirement2}</p>
+              <p>• {t.bonus.requirement3}</p>
             </div>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>{t.bonus.faq3Question}</span>
-              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+              <span>{t.bonus.faq3Q}</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform shrink-0"/>
             </summary>
-            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              {t.bonus.faq3Answer}
+            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed">
+              {t.bonus.faq3A}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>{t.bonus.faq4Question}</span>
-              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+              <span>{t.bonus.faq4Q}</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform shrink-0"/>
             </summary>
-            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              {t.bonus.faq4Answer}
+            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed">
+              {t.bonus.faq4A}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>{t.bonus.faq5Question}</span>
-              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+              <span>{t.bonus.faq5Q}</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform shrink-0"/>
             </summary>
-            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              {t.bonus.faq5Answer}
+            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed">
+              {t.bonus.faq5A}
             </p>
           </details>
         </div>
