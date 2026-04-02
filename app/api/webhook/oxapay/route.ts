@@ -1,11 +1,10 @@
 import crypto from 'crypto';
-import dbConnect, { withTransaction } from '@/lib/db';
+import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Transaction from '@/models/Transaction';
 import Notification from '@/models/Notification';
 import Settings from '@/models/Settings';
 import Bonus from '@/models/Bonus';
-import mongoose from 'mongoose';
 
 const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
 const PAYOUT_KEY = process.env.OXAPAY_PAYOUT_API_KEY;
@@ -156,185 +155,193 @@ export async function POST(req: Request): Promise<Response> {
 
       console.log('[OxaPay] Found user:', user._id);
 
+      console.log('[OxaPay] Creating transaction record...');
       try {
-        await withTransaction(async (session) => {
-          const created = await Transaction.create(
-            [
-              {
-                userId: user._id,
-                type: 'deposit',
-                amount,
-                currency: 'USDT',
-                status: 'completed',
-                txId: track_id,
-                details: {
-                  order_id,
-                  address: address || user.depositAddress,
-                  network: body.network ?? 'BSC',
-                },
-              },
-            ],
-            { session },
-          );
-
-          if (!created || created.length === 0) {
-            throw new Error('Failed to create transaction');
-          }
-
-          user.balance = parseFloat((user.balance + amount).toFixed(6));
-          await user.save({ session });
-
-          await Notification.create(
-            [
-              {
-                userId: user._id,
-                title: 'Deposit Successful',
-                body: `Your deposit of ${amount} USDT has been credited to your account.`,
-                type: 'personal',
-                icon: '💰',
-              },
-            ],
-            { session },
-          );
-
-          const existingBonus = await Bonus.findOne({ userId: user._id, type: 'welcome' }).session(session);
-          const depositCount = await Transaction.countDocuments({
-            userId: user._id,
-            type: 'deposit',
-            status: 'completed',
-          }).session(session);
-
-          if (!existingBonus && depositCount === 1 && amount >= 100) {
-            let bonusPercent = 20;
-            if (amount >= 1000) bonusPercent = 50;
-            else if (amount >= 500) bonusPercent = 40;
-            else if (amount >= 200) bonusPercent = 30;
-
-            const bonusAmount = parseFloat((amount * bonusPercent / 100).toFixed(2));
-
-            await Bonus.create(
-              [
-                {
-                  userId: user._id,
-                  type: 'welcome',
-                  status: 'pending',
-                  firstDepositAmount: amount,
-                  bonusAmount,
-                  bonusPercent,
-                  requiredBetVolume: 30,
-                  requiredReferrals: 3,
-                  currentBetVolume: 0,
-                  currentReferrals: 0,
-                  referredUsersInvested: 0,
-                  expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                },
-              ],
-              { session },
-            );
-
-            await Notification.create(
-              [
-                {
-                  userId: user._id,
-                  title: '🎁 Welcome Bonus Unlocked!',
-                  body: `Deposit $${amount.toFixed(2)} unlocked a ${bonusPercent}% bonus!`,
-                  type: 'personal',
-                  icon: '🎁',
-                },
-              ],
-              { session },
-            );
-          }
-
-          if (user.referrerCode) {
-            const referrer = await User.findOne({ myReferralCode: user.referrerCode }).session(session);
-            if (referrer) {
-              const referralTxId = `ref-${track_id}`;
-              const existingReferral = await Transaction.findOne({
-                txId: referralTxId,
-                type: 'referral',
-              }).session(session);
-
-              if (!existingReferral) {
-                const bonus = amount >= 100 ? amount * 0.3 : amount * 0.05;
-                referrer.balance = parseFloat((referrer.balance + bonus).toFixed(6));
-                await referrer.save({ session });
-
-                await Transaction.create(
-                  [
-                    {
-                      userId: referrer._id,
-                      type: 'referral',
-                      amount: bonus,
-                      currency: 'USDT',
-                      status: 'completed',
-                      txId: referralTxId,
-                      details: { referredUserId: user._id, depositAmount: amount, depositTxId: track_id },
-                    },
-                  ],
-                  { session },
-                );
-              }
-            }
-          }
+        await Transaction.create({
+          userId: user._id,
+          type: 'deposit',
+          amount,
+          currency: 'USDT',
+          status: 'completed',
+          txId: track_id,
+          details: {
+            order_id,
+            address: address || user.depositAddress,
+            network: body.network ?? 'BSC',
+          },
         });
-
-        console.log('[OxaPay] Deposit processed. User:', user._id, 'Amount:', amount);
       } catch (err: any) {
-        if (err.code === 11000 && err.keyPattern?.txId) {
+        if (err.code === 11000) {
           console.log('[OxaPay] Transaction already processed (duplicate key):', track_id);
           return ok();
         }
+        console.error('[OxaPay] Failed to create transaction:', err);
         throw err;
       }
+      console.log('[OxaPay] Transaction created:', track_id);
 
+      console.log('[OxaPay] Updating user balance...');
+      const userUpdateResult = await User.updateOne(
+        { _id: user._id },
+        { $inc: { balance: amount } },
+      );
+      console.log('[OxaPay] Balance update result:', userUpdateResult);
+
+      console.log('[OxaPay] Creating deposit notification...');
+      try {
+        await Notification.create({
+          userId: user._id,
+          title: 'Deposit Successful',
+          body: `Your deposit of ${amount} USDT has been credited to your account.`,
+          type: 'personal',
+          icon: '💰',
+        });
+        console.log('[OxaPay] Notification created');
+      } catch (notifErr) {
+        console.error('[OxaPay] Failed to create notification (non-critical):', notifErr);
+      }
+
+      const existingBonus = await Bonus.findOne({ userId: user._id, type: 'welcome' });
+      const depositCount = await Transaction.countDocuments({
+        userId: user._id,
+        type: 'deposit',
+        status: 'completed',
+      });
+
+      console.log('[OxaPay] Deposit count:', depositCount, 'Existing bonus:', !!existingBonus);
+
+      if (!existingBonus && depositCount === 1 && amount >= 100) {
+        console.log('[OxaPay] Creating welcome bonus...');
+        let bonusPercent = 20;
+        if (amount >= 1000) bonusPercent = 50;
+        else if (amount >= 500) bonusPercent = 40;
+        else if (amount >= 200) bonusPercent = 30;
+
+        const bonusAmount = parseFloat((amount * bonusPercent / 100).toFixed(2));
+
+        try {
+          await Bonus.create({
+            userId: user._id,
+            type: 'welcome',
+            status: 'pending',
+            firstDepositAmount: amount,
+            bonusAmount,
+            bonusPercent,
+            requiredBetVolume: 30,
+            requiredReferrals: 3,
+            currentBetVolume: 0,
+            currentReferrals: 0,
+            referredUsersInvested: 0,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          });
+          console.log('[OxaPay] Welcome bonus created:', bonusAmount);
+
+          await Notification.create({
+            userId: user._id,
+            title: '🎁 Welcome Bonus Unlocked!',
+            body: `Deposit $${amount.toFixed(2)} unlocked a ${bonusPercent}% bonus!`,
+            type: 'personal',
+            icon: '🎁',
+          });
+        } catch (bonusErr) {
+          console.error('[OxaPay] Failed to create bonus (non-critical):', bonusErr);
+        }
+      }
+
+      if (user.referrerCode) {
+        console.log('[OxaPay] Processing referral bonus...');
+        const referrer = await User.findOne({ myReferralCode: user.referrerCode });
+        if (referrer) {
+          const referralTxId = `ref-${track_id}`;
+          const existingReferral = await Transaction.findOne({
+            txId: referralTxId,
+            type: 'referral',
+          });
+
+          if (!existingReferral) {
+            const bonus = amount >= 100 ? amount * 0.3 : amount * 0.05;
+            console.log('[OxaPay] Crediting referral bonus:', bonus, 'to referrer:', referrer._id);
+
+            await User.updateOne(
+              { _id: referrer._id },
+              { $inc: { balance: bonus } },
+            );
+
+            try {
+              await Transaction.create({
+                userId: referrer._id,
+                type: 'referral',
+                amount: bonus,
+                currency: 'USDT',
+                status: 'completed',
+                txId: referralTxId,
+                details: { referredUserId: user._id, depositAmount: amount, depositTxId: track_id },
+              });
+              console.log('[OxaPay] Referral transaction created');
+            } catch (refErr) {
+              console.error('[OxaPay] Failed to create referral transaction:', refErr);
+            }
+          } else {
+            console.log('[OxaPay] Referral bonus already exists:', referralTxId);
+          }
+        }
+      }
+
+      console.log('[OxaPay] Deposit processed successfully. User:', user._id, 'Amount:', amount);
       return ok();
     } else if (type === 'payout') {
       if (!track_id) return ok();
 
       if (status === 'Confirmed') {
+        console.log('[OxaPay] Processing payout confirmation:', track_id);
         const tx = await Transaction.findOneAndUpdate(
           { txId: track_id, type: 'withdraw' },
           { status: 'completed' },
           { returnDocument: 'after' },
         );
         if (tx) {
-          await Notification.create({
-            userId: tx.userId,
-            title: 'Withdrawal Confirmed',
-            body: `Your withdrawal of ${tx.amount} USDT has been confirmed.`,
-            type: 'personal',
-            icon: '✅',
-          });
+          console.log('[OxaPay] Withdrawal marked completed:', track_id);
+          try {
+            await Notification.create({
+              userId: tx.userId,
+              title: 'Withdrawal Confirmed',
+              body: `Your withdrawal of ${tx.amount} USDT has been confirmed.`,
+              type: 'personal',
+              icon: '✅',
+            });
+          } catch (notifErr) {
+            console.error('[OxaPay] Failed to create notification:', notifErr);
+          }
+        } else {
+          console.log('[OxaPay] Withdrawal not found:', track_id);
         }
       } else if (status === 'Failed') {
-        await withTransaction(async (session) => {
-          const tx = await Transaction.findOne({ txId: track_id, type: 'withdraw', status: { $ne: 'rejected' } }).session(session);
-          if (tx) {
-            tx.status = 'rejected';
-            await tx.save({ session });
+        console.log('[OxaPay] Processing payout failure:', track_id);
+        const tx = await Transaction.findOne({ txId: track_id, type: 'withdraw', status: { $ne: 'rejected' } });
+        if (tx) {
+          tx.status = 'rejected';
+          await tx.save();
+          console.log('[OxaPay] Withdrawal marked rejected:', track_id);
 
-            const user = await User.findById(tx.userId).session(session);
-            if (user) {
-              const gross = parseFloat(((tx.details as any)?.grossAmount ?? tx.amount).toString());
-              user.balance = parseFloat((user.balance + gross).toFixed(6));
-              await user.save({ session });
+          const user = await User.findById(tx.userId);
+          if (user) {
+            const gross = parseFloat(((tx.details as any)?.grossAmount ?? tx.amount).toString());
+            await User.updateOne({ _id: user._id }, { $inc: { balance: gross } });
+            console.log('[OxaPay] Balance refunded:', gross);
 
-              await Notification.create(
-                [
-                  {
-                    userId: user._id,
-                    title: 'Withdrawal Failed',
-                    body: `Your withdrawal of ${gross} USDT failed and has been refunded.`,
-                    type: 'personal',
-                    icon: '❌',
-                  },
-                ],
-                { session },
-              );
+            try {
+              await Notification.create({
+                userId: user._id,
+                title: 'Withdrawal Failed',
+                body: `Your withdrawal of ${gross} USDT failed and has been refunded.`,
+                type: 'personal',
+                icon: '❌',
+              });
+            } catch (notifErr) {
+              console.error('[OxaPay] Failed to create notification:', notifErr);
             }
           }
-        });
+        }
       }
 
       return ok();
