@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
-import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -496,64 +496,76 @@ export default function SportsPage() {
 
                   return (
                     <div key={match._id} className={`transition-colors duration-200 ${active ? 'bg-accent/5' : ''}`}>
-                      {/* Top row: time + status badges */}
-                      <div className="flex items-center justify-between px-4 pt-3 pb-1.5 gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={10} className="text-gray-600"/>
-                          <span className="text-[10px] text-gray-600 font-bold">
-                            {match.date}{match.time&&match.time!=='TBD'?` · ${match.time} UTC`:''}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                      {/* Teams + Score/Time Row */}
+                      <div className="px-4 py-3">
+                        {/* Status badges top */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            {!live && !finished && !closed && (
+                              <span className="text-[10px] text-gray-500 font-bold">{match.date}{match.time && match.time !== 'TBD' ? ` · ${match.time}` : ''}</span>
+                            )}
+                            {live && (
+                              <span className="flex items-center gap-1 bg-red-500/20 text-red-400 text-[9px] font-black px-2 py-0.5 rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                                LIVE {live.minute}
+                              </span>
+                            )}
+                            {finished && (
+                              <span className="text-[10px] text-gray-500 font-bold">FT</span>
+                            )}
+                            {closed && !finished && (
+                              <span className="flex items-center gap-1 bg-orange-500/15 text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-full">
+                                <Lock size={9}/> Betting Closed
+                              </span>
+                            )}
+                          </div>
                           {match.moneyBack && !closed && !finished && (
                             <span className="flex items-center gap-1 bg-green-500/15 text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-green-500/20">
-                              <Gift size={9}/> {t.sports.moneyBack}
-                            </span>
-                          )}
-                          {live && <LiveScore live={live} />}
-                          {!live && finished && (
-                            <span className="flex items-center gap-1 bg-gray-500/10 text-gray-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-gray-500/20">
-                              ✓ {match.result ? `Ended: ${match.result.toUpperCase()}` : 'Finished'}
-                            </span>
-                          )}
-                          {!live && !finished && closed && (
-                            <span className="flex items-center gap-1 bg-orange-500/10 text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-500/20">
-                              <Lock size={9}/> Closed
+                              <Gift size={9}/> MB
                             </span>
                           )}
                         </div>
-                      </div>
 
-                      {/* Teams + live scores */}
-                      <div className="px-4 pb-3 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Badge url={match.homeBadge} name={match.homeTeam} size={34}/>
-                          <span className="font-bold text-sm text-white flex-1 truncate">{match.homeTeam}</span>
-                          {live && (
-                            <motion.span
-                              key={live.homeScore}
-                              animate={bumping ? { scale:[1,1.4,1], color:['#ffffff','#f0b429','#ffffff'] } : {}}
-                              transition={{ duration:0.5 }}
-                              className="font-black text-2xl text-white w-8 text-center tabular-nums"
-                            >{live.homeScore ?? '0'}</motion.span>
-                          )}
-                        </div>
-                        {live && (
-                          <div className="flex items-center gap-3 pl-[46px]">
-                            <span className="text-[10px] text-gray-600 font-bold">vs</span>
+                        {/* Teams with scores */}
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Home Team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Badge url={match.homeBadge} name={match.homeTeam} size={28}/>
+                            <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
                           </div>
-                        )}
-                        <div className="flex items-center gap-3">
-                          <Badge url={match.awayBadge} name={match.awayTeam} size={34}/>
-                          <span className="font-bold text-sm text-white flex-1 truncate">{match.awayTeam}</span>
-                          {live && (
-                            <motion.span
-                              key={live.awayScore}
-                              animate={bumping ? { scale:[1,1.4,1], color:['#ffffff','#f0b429','#ffffff'] } : {}}
-                              transition={{ duration:0.5 }}
-                              className="font-black text-2xl text-white w-8 text-center tabular-nums"
-                            >{live.awayScore ?? '0'}</motion.span>
-                          )}
+
+                          {/* Score / Time / Result */}
+                          <div className="flex-shrink-0 px-2">
+                            {live ? (
+                              <div className="flex items-center gap-1.5">
+                                <motion.span
+                                  key={live.homeScore}
+                                  animate={bumping ? { scale:[1,1.3,1], color:['#ffffff','#fbbf24','#ffffff'] } : {}}
+                                  transition={{ duration:0.4 }}
+                                  className="font-black text-xl text-white tabular-nums"
+                                >{live.homeScore ?? '0'}</motion.span>
+                                <span className="text-gray-500 font-bold">-</span>
+                                <motion.span
+                                  key={live.awayScore}
+                                  animate={bumping ? { scale:[1,1.3,1], color:['#ffffff','#fbbf24','#ffffff'] } : {}}
+                                  transition={{ duration:0.4 }}
+                                  className="font-black text-xl text-white tabular-nums"
+                                >{live.awayScore ?? '0'}</motion.span>
+                              </div>
+                            ) : finished && match.result ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black text-xl text-white">{match.result === 'home' ? '1' : match.result === 'draw' ? 'X' : '2'}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500 font-bold">vs</span>
+                            )}
+                          </div>
+
+                          {/* Away Team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                            <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
+                            <Badge url={match.awayBadge} name={match.awayTeam} size={28}/>
+                          </div>
                         </div>
                       </div>
 
