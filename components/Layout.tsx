@@ -6,10 +6,11 @@ import Link from 'next/link';
 import {
   Home, Trophy, Wallet, Users, Shield, LogOut, LogIn,
   UserPlus, Briefcase, Menu, X, ChevronRight, ChevronLeft,
-  MessageSquare, Bell, Gamepad2,
+  MessageSquare, Bell, Gamepad2, Gift,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Mascot from './Mascot';
+import WelcomeModal from './WelcomeModal';
 
 type Role = 'user'|'mod'|'recruiter'|'admin';
 
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [notifOpen,     setNotifOpen]     = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread,        setUnread]        = useState(0);
+  const [showWelcome,   setShowWelcome]   = useState(false);
   const router   = useRouter();
   const pathname = usePathname();
   const pollRef  = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -49,6 +51,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           const d = await res.json();
           setUser(d.user);
           fetchNotifications();
+          if (d.user && !d.user.welcomeBonusSeen && !isPublicRoute) {
+            setShowWelcome(true);
+          }
         } else if (!isPublicRoute) { router.replace('/login'); return; }
       } catch { /* silent */ }
       finally { setLoading(false); }
@@ -97,6 +102,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name:'Home',    path:'/',          icon:Home         },
     { name:'Sports',  path:'/sports',    icon:Trophy       },
     { name:'Games',   path:'/games',     icon:Gamepad2     },
+    { name:'Bonus',   path:'/bonuses',   icon:Gift         },
     { name:'Wallet',  path:'/wallet',    icon:Wallet       },
     { name:'Refer',   path:'/referrals', icon:Users        },
     { name:'Support', path:'/support',   icon:MessageSquare},
@@ -106,15 +112,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { label:'Dashboard',    path:'/',          icon:Home           },
     { label:'Sports Betting', path:'/sports',    icon:Trophy         },
     { label:'Inverse Betting', path:'/games',    icon:Gamepad2       },
+    { label:'Bonuses',      path:'/bonuses',    icon:Gift           },
     { label:'My Wallet',      path:'/wallet',    icon:Wallet         },
     { label:'Referrals',      path:'/referrals', icon:Users          },
-    { label:'Careers',        path:'/careers',   icon:Briefcase      },
     { label:'Support',        path:'/support',   icon:MessageSquare  },
     ...(showAdmin ? [{ label:'Admin Panel', path:'/admin', icon:Shield }] : []),
   ];
 
   return (
-    <div className="flex min-h-screen bg-background text-white">
+    <>
+      <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />
+      <div className="flex min-h-screen bg-background text-white">
 
       {/* Desktop Sidebar - hidden on mobile */}
       <aside className="hidden lg:flex flex-col w-64 bg-[#0d1117] border-r border-white/8 shrink-0">
@@ -385,7 +393,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </div>
-      </nav>
+</nav>
     </div>
+    </>
   );
 }

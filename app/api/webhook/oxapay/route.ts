@@ -18,6 +18,7 @@ import User           from '@/models/User';
 import Transaction    from '@/models/Transaction';
 import Notification   from '@/models/Notification';
 import Settings       from '@/models/Settings';
+import Bonus          from '@/models/Bonus';
 
 const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
 const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
@@ -136,7 +137,47 @@ export async function POST(req: Request): Promise<Response> {
       type:   'personal',
       icon:   '💰',
     });
-    console.log('OxaPay webhook: deposit credited', { userId: user._id.toString(), amount, track_id });
+    console.log('[OxaPay] Deposit processed successfully. User:', user._id, 'Amount:', amount);
+
+    // Welcome bonus for first deposit >= 100
+    const existingBonus = await Bonus.findOne({ userId: user._id, type: 'welcome' });
+    const depositCount = await Transaction.countDocuments({
+      userId: user._id,
+      type: 'deposit',
+      status: 'completed',
+    });
+
+    if (!existingBonus && depositCount === 1 && amount >= 100) {
+      let bonusPercent = 20;
+      if (amount >= 1000) bonusPercent = 50;
+      else if (amount >= 500) bonusPercent = 40;
+      else if (amount >= 200) bonusPercent = 30;
+
+      const bonusAmount = parseFloat((amount * bonusPercent / 100).toFixed(2));
+
+      await Bonus.create({
+        userId: user._id,
+        type: 'welcome',
+        status: 'pending',
+        firstDepositAmount: amount,
+        bonusAmount,
+        bonusPercent,
+        requiredBetVolume: 30,
+        requiredReferrals: 3,
+        currentBetVolume: 0,
+        currentReferrals: 0,
+        referredUsersInvested: 0,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+
+      await Notification.create({
+        userId: user._id,
+        title: '🎁 Welcome Bonus Unlocked!',
+        body: `Deposit $${amount.toFixed(2)} unlocked a ${bonusPercent}% bonus! Complete requirements to claim.`,
+        type: 'personal',
+        icon: '🎁',
+      });
+    }
 
     // Referral bonus
     if (user.referrerCode) {
