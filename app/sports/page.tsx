@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
-import { X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu } from 'lucide-react';
+import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -269,7 +269,7 @@ export default function SportsPage() {
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            All
+            {t.sports.allLeagues}
           </button>
           {leagues.sort().map(lg => (
             <button key={lg} onClick={() => setActiveLeague(lg)}
@@ -284,7 +284,7 @@ export default function SportsPage() {
         {/* Mobile: active league pill + dropdown menu */}
         <div className="flex-1 flex items-center gap-2 lg:hidden">
           <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-4 py-2.5">
-            <span className="font-black text-sm text-white truncate">{activeLeague === 'All' ? 'All Leagues' : activeLeague}</span>
+            <span className="font-black text-sm text-white truncate">{activeLeague === 'All' ? t.sports.allLeagues : activeLeague}</span>
             {liveCount > 0 && (
               <span className="ml-auto bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">{liveCount}</span>
             )}
@@ -294,20 +294,20 @@ export default function SportsPage() {
             <button onClick={() => setMenuOpen(v => !v)}
               className="flex items-center gap-2 bg-surface border border-white/8 px-3 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-white transition-colors"
             >
-              <Menu size={15}/> <span className="hidden xs:block">Leagues</span>
+              <Menu size={15}/> <span className="hidden xs:block">{t.sports.leagues}</span>
             </button>
             {/* Dropdown */}
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)}/>
                 <div className="absolute right-0 top-full mt-2 w-56 bg-[#161b22] border border-white/10 rounded-2xl shadow-2xl z-40 overflow-hidden max-h-80 overflow-y-auto">
-                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">Leagues</p>
+                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">{t.sports.leagues}</p>
                   <button onClick={() => { setActiveLeague('All'); setMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 ${
                       activeLeague === 'All' ? 'bg-accent/15 text-accent' : 'text-gray-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <span className="flex-1">All Leagues</span>
+                    <span className="flex-1">{t.sports.allLeagues}</span>
                     {activeLeague === 'All' && <span className="w-1.5 h-1.5 bg-accent rounded-full shrink-0"/>}
                   </button>
                   {leagues.sort().map(lg => (
@@ -334,8 +334,8 @@ export default function SportsPage() {
           className="flex items-center gap-2 mb-3 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2"
         >
           <Zap size={13} className="text-red-400"/>
-          <span className="text-red-400 text-xs font-black">{liveCount} LIVE RIGHT NOW</span>
-          <span className="text-red-400/50 text-[10px] ml-auto">updates every {refreshSecs}s</span>
+          <span className="text-red-400 text-xs font-black">{liveCount} {t.sports.liveNow}</span>
+          <span className="text-red-400/50 text-[10px] ml-auto">{t.sports.updatesEvery} {refreshSecs}s</span>
         </motion.div>
       )}
 
@@ -358,7 +358,7 @@ export default function SportsPage() {
         className="w-full flex items-center justify-between bg-surface border border-white/8 rounded-xl px-4 py-2.5 mb-3 text-sm font-black text-gray-400 hover:text-white transition-colors"
       >
         <span>
-          My Bets
+          {t.sports.betsPlaced}
           {myBets.length>0 && <span className="ml-2 bg-accent text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{myBets.length}</span>}
         </span>
         {showBets ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
@@ -370,7 +370,7 @@ export default function SportsPage() {
             className="mb-3 bg-surface border border-white/8 rounded-2xl overflow-hidden"
           >
             {myBets.length===0
-              ? <p className="text-center text-gray-600 text-xs py-6">No bets placed yet</p>
+              ? <p className="text-center text-gray-600 text-xs py-6">{t.sports.noBetsYet}</p>
               : <div className="divide-y divide-white/5 max-h-72 overflow-y-auto">
                   {myBets.map(b => (
                     <div key={b._id} className="px-4 py-3 flex justify-between items-start gap-3">
@@ -496,75 +496,92 @@ export default function SportsPage() {
 
                   return (
                     <div key={match._id} className={`transition-colors duration-200 ${active ? 'bg-accent/5' : ''}`}>
-                      {/* Teams + Score/Time Row */}
-                      <div className="px-4 py-3">
-                        {/* Status badges top */}
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-1.5">
-                            {!live && !finished && !closed && (
-                              <span className="text-[10px] text-gray-500 font-bold">{match.date}{match.time && match.time !== 'TBD' ? ` · ${match.time}` : ''}</span>
-                            )}
-                            {live && (
-                              <span className="flex items-center gap-1 bg-red-500/20 text-red-400 text-[9px] font-black px-2 py-0.5 rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
-                                LIVE {live.minute}
-                              </span>
-                            )}
-                            {finished && (
-                              <span className="text-[10px] text-gray-500 font-bold">FT</span>
-                            )}
-                            {closed && !finished && (
-                              <span className="flex items-center gap-1 bg-orange-500/15 text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-full">
-                                <Lock size={9}/> Betting Closed
-                              </span>
+                      {/* Status row */}
+                      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                        {!live && !finished && !closed && (
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <Clock size={12}/>
+                            <span className="text-xs font-bold">{match.date}{match.time && match.time !== 'TBD' ? ` · ${match.time}` : ''}</span>
+                          </div>
+                        )}
+                        {live && (
+                          <div className="flex items-center gap-1.5 bg-red-500/20 px-2 py-1 rounded-full">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                            <span className="text-red-400 text-xs font-black">LIVE {live.minute}</span>
+                          </div>
+                        )}
+                        {finished && (
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <CheckCircle size={12}/>
+                            <span className="text-xs font-bold">FT</span>
+                            {match.result && (
+                              <span className="text-white font-bold text-sm">— {match.result.toUpperCase()}</span>
                             )}
                           </div>
-                          {match.moneyBack && !closed && !finished && (
-                            <span className="flex items-center gap-1 bg-green-500/15 text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-green-500/20">
-                              <Gift size={9}/> MB
-                            </span>
-                          )}
-                        </div>
+                        )}
+                        {closed && !finished && (
+                          <div className="flex items-center gap-1.5 bg-orange-500/20 px-2 py-1 rounded-full">
+                            <Lock size={12} className="text-orange-400"/>
+                            <span className="text-orange-400 text-xs font-bold">Betting Closed</span>
+                          </div>
+                        )}
+                        {match.moneyBack && !closed && !finished && (
+                          <span className="flex items-center gap-1 bg-green-500/15 text-green-400 text-[9px] font-black px-2 py-1 rounded-full">
+                            <Gift size={10}/> MB
+                          </span>
+                        )}
+                      </div>
 
-                        {/* Teams with scores */}
+                      {/* Teams + Score */}
+                      <div className="px-4 pb-3">
                         <div className="flex items-center justify-between gap-2">
-                          {/* Home Team */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Badge url={match.homeBadge} name={match.homeTeam} size={28}/>
-                            <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
-                          </div>
-
-                          {/* Score / Time / Result */}
-                          <div className="flex-shrink-0 px-2">
+                          {/* Home Team + Score */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge url={match.homeBadge} name={match.homeTeam} size={28}/>
+                              <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
+                            </div>
                             {live ? (
-                              <div className="flex items-center gap-1.5">
-                                <motion.span
-                                  key={live.homeScore}
-                                  animate={bumping ? { scale:[1,1.3,1], color:['#ffffff','#fbbf24','#ffffff'] } : {}}
-                                  transition={{ duration:0.4 }}
-                                  className="font-black text-xl text-white tabular-nums"
-                                >{live.homeScore ?? '0'}</motion.span>
-                                <span className="text-gray-500 font-bold">-</span>
-                                <motion.span
-                                  key={live.awayScore}
-                                  animate={bumping ? { scale:[1,1.3,1], color:['#ffffff','#fbbf24','#ffffff'] } : {}}
-                                  transition={{ duration:0.4 }}
-                                  className="font-black text-xl text-white tabular-nums"
-                                >{live.awayScore ?? '0'}</motion.span>
-                              </div>
-                            ) : finished && match.result ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-xl text-white">{match.result === 'home' ? '1' : match.result === 'draw' ? 'X' : '2'}</span>
-                              </div>
+                              <motion.div
+                                key={live.homeScore}
+                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                transition={{ duration:0.4 }}
+                                className="text-2xl font-black text-white tabular-nums"
+                              >
+                                {live.homeScore ?? '0'}
+                              </motion.div>
+                            ) : finished && match.result === 'home' ? (
+                              <div className="text-xl font-black text-green-400">WON</div>
                             ) : (
-                              <span className="text-xs text-gray-500 font-bold">vs</span>
+                              <div className="text-sm font-bold text-gray-500">-</div>
                             )}
                           </div>
 
-                          {/* Away Team */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                            <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
-                            <Badge url={match.awayBadge} name={match.awayTeam} size={28}/>
+                          {/* VS Separator */}
+                          <div className="flex flex-col items-center px-2">
+                            <span className="text-xs text-gray-600 font-bold">VS</span>
+                          </div>
+
+                          {/* Away Team + Score */}
+                          <div className="flex-1 min-w-0 text-right">
+                            <div className="flex items-center gap-2 mb-2 justify-end">
+                              <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
+                              <Badge url={match.awayBadge} name={match.awayTeam} size={28}/>
+                            </div>
+                            {live ? (
+                              <motion.div
+                                key={live.awayScore}
+                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                transition={{ duration:0.4 }}
+                                className="text-2xl font-black text-white tabular-nums"
+                              >
+                                {live.awayScore ?? '0'}
+                              </motion.div>
+                            ) : finished && match.result === 'away' ? (
+                              <div className="text-xl font-black text-green-400">WON</div>
+                            ) : (
+                              <div className="text-sm font-bold text-gray-500">-</div>
+                            )}
                           </div>
                         </div>
                       </div>

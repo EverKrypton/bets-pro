@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
-import { Clock, X, ChevronDown, ChevronUp, Info, Lock, TrendingDown, Zap, Menu } from 'lucide-react';
+import { Clock, X, ChevronDown, ChevronUp, Info, Lock, TrendingDown, Zap, Menu, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -273,13 +273,13 @@ export default function InversePage() {
         <div className="hidden lg:flex bg-surface border border-white/8 rounded-xl p-1 gap-1 overflow-x-auto flex-1">
           <button 
             onClick={() => setActiveLeague('All')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
-              activeLeague==='All' 
-                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' 
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            All
+className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
+                activeLeague==='All' 
+                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+            {t.games.allLeagues}
           </button>
           {leagues.sort().map(lg => (
             <button key={lg} onClick={() => setActiveLeague(lg)}
@@ -293,7 +293,7 @@ export default function InversePage() {
         </div>
         <div className="flex-1 flex items-center gap-2 lg:hidden">
           <div className="flex-1 flex items-center gap-2 bg-surface border border-white/8 rounded-xl px-4 py-2.5">
-            <span className="font-black text-sm text-white truncate">{activeLeague === 'All' ? 'All Leagues' : activeLeague}</span>
+            <span className="font-black text-sm text-white truncate">{activeLeague === 'All' ? t.games.allLeagues : activeLeague}</span>
             {liveCount > 0 && (
               <span className="ml-auto bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">{liveCount}</span>
             )}
@@ -302,19 +302,19 @@ export default function InversePage() {
             <button onClick={() => setMenuOpen(v => !v)}
               className="flex items-center gap-2 bg-surface border border-white/8 px-3 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-white transition-colors"
             >
-              <Menu size={15}/> <span className="hidden xs:block">Leagues</span>
+              <Menu size={15}/> <span className="hidden xs:block">{t.games.leagues}</span>
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)}/>
                 <div className="absolute right-0 top-full mt-2 w-56 bg-[#161b22] border border-white/10 rounded-2xl shadow-2xl z-40 overflow-hidden max-h-80 overflow-y-auto">
-                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">Leagues</p>
+                  <p className="px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-white/5">{t.games.leagues}</p>
                   <button onClick={() => { setActiveLeague('All'); setMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-colors text-left border-b border-white/5 ${
                       activeLeague === 'All' ? 'bg-yellow-500/15 text-yellow-400' : 'text-gray-300 hover:bg-white/5 hover:text-white'
                     }`}
                   >
-                    <span className="flex-1">All Leagues</span>
+                    <span className="flex-1">{t.games.allLeagues}</span>
                     {activeLeague === 'All' && <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full shrink-0"/>}
                   </button>
                   {leagues.sort().map(lg => (
@@ -340,8 +340,8 @@ export default function InversePage() {
           className="flex items-center gap-2 mb-3 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2"
         >
           <Zap size={13} className="text-red-400"/>
-          <span className="text-red-400 text-xs font-black">{liveCount} LIVE RIGHT NOW</span>
-          <span className="text-red-400/50 text-[10px] ml-auto">updates every {refreshSecs}s</span>
+          <span className="text-red-400 text-xs font-black">{liveCount} {t.games.liveNow}</span>
+          <span className="text-red-400/50 text-[10px] ml-auto">{t.games.updatesEvery} {refreshSecs}s</span>
         </motion.div>
       )}
 
@@ -374,7 +374,7 @@ export default function InversePage() {
             className="mb-3 bg-surface border border-white/8 rounded-2xl overflow-hidden"
           >
             {myBets.length===0
-              ? <p className="text-center text-gray-600 text-xs py-6">No inverse bets placed yet</p>
+              ? <p className="text-center text-gray-600 text-xs py-6">{t.games.noBetsYet}</p>
               : <div className="divide-y divide-white/5 max-h-72 overflow-y-auto">
                   {myBets.map(b => (
                     <div key={b._id} className="px-4 py-3 flex justify-between items-start gap-3">
@@ -464,11 +464,11 @@ export default function InversePage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <div className="w-7 h-7 border-2 border-white/10 border-t-yellow-500 rounded-full animate-spin"/>
-          <p className="text-xs text-gray-600">Loading inverse markets...</p>
+          <p className="text-xs text-gray-600">{t.common.loading}</p>
         </div>
       ) : Object.keys(grouped).length===0 ? (
         <div className="text-center py-24">
-          <p className="font-bold text-sm text-gray-500">No matches available</p>
+          <p className="font-bold text-sm text-gray-500">{t.sports.noMatches}</p>
         </div>
       ) : (
         <div className="space-y-3 pb-44">
@@ -493,57 +493,88 @@ export default function InversePage() {
 
                   return (
                     <div key={match._id} className={`transition-colors duration-200 ${active ? 'bg-yellow-500/5' : ''}`}>
-                      <div className="flex items-center justify-between px-4 pt-3 pb-1.5 gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={10} className="text-gray-600"/>
-                          <span className="text-[10px] text-gray-600 font-bold">
-                            {match.date}{match.time&&match.time!=='TBD'?` · ${match.time} UTC`:''}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {live && <LiveScore live={live} />}
-                          {!live && finished && (
-                            <span className="flex items-center gap-1 bg-gray-500/10 text-gray-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-gray-500/20">
-                              ✓ {match.result ? `Ended: ${match.result.toUpperCase()}` : 'Finished'}
-                            </span>
-                          )}
-                          {!live && !finished && closed && (
-                            <span className="flex items-center gap-1 bg-orange-500/10 text-orange-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-orange-500/20">
-                              <Lock size={9}/> Closed
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="px-4 pb-3 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Badge url={match.homeBadge} name={match.homeTeam} size={34}/>
-                          <span className="font-bold text-sm text-white flex-1 truncate">{match.homeTeam}</span>
-                          {live && (
-                            <motion.span
-                              key={live.homeScore}
-                              animate={bumping ? { scale:[1,1.4,1], color:['#ffffff','#f0b429','#ffffff'] } : {}}
-                              transition={{ duration:0.5 }}
-                              className="font-black text-2xl text-white w-8 text-center tabular-nums"
-                            >{live.homeScore ?? '0'}</motion.span>
-                          )}
-                        </div>
-                        {live && (
-                          <div className="flex items-center gap-3 pl-[46px]">
-                            <span className="text-[10px] text-gray-600 font-bold">vs</span>
+                      {/* Status row */}
+                      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                        {!live && !finished && !closed && (
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <Clock size={12}/>
+                            <span className="text-xs font-bold">{match.date}{match.time && match.time !== 'TBD' ? ` · ${match.time}` : ''}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-3">
-                          <Badge url={match.awayBadge} name={match.awayTeam} size={34}/>
-                          <span className="font-bold text-sm text-white flex-1 truncate">{match.awayTeam}</span>
-                          {live && (
-                            <motion.span
-                              key={live.awayScore}
-                              animate={bumping ? { scale:[1,1.4,1], color:['#ffffff','#f0b429','#ffffff'] } : {}}
-                              transition={{ duration:0.5 }}
-                              className="font-black text-2xl text-white w-8 text-center tabular-nums"
-                            >{live.awayScore ?? '0'}</motion.span>
-                          )}
+                        {live && (
+                          <div className="flex items-center gap-1.5 bg-red-500/20 px-2 py-1 rounded-full">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                            <span className="text-red-400 text-xs font-black">LIVE {live.minute}</span>
+                          </div>
+                        )}
+                        {finished && (
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <CheckCircle size={12}/>
+                            <span className="text-xs font-bold">FT</span>
+                            {match.result && (
+                              <span className="text-white font-bold text-sm">— {match.result.toUpperCase()}</span>
+                            )}
+                          </div>
+                        )}
+                        {closed && !finished && (
+                          <div className="flex items-center gap-1.5 bg-orange-500/20 px-2 py-1 rounded-full">
+                            <Lock size={12} className="text-orange-400"/>
+                            <span className="text-orange-400 text-xs font-bold">Closed</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Teams + Score */}
+                      <div className="px-4 pb-3">
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Home Team + Score */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge url={match.homeBadge} name={match.homeTeam} size={28}/>
+                              <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
+                            </div>
+                            {live ? (
+                              <motion.div
+                                key={live.homeScore}
+                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                transition={{ duration:0.4 }}
+                                className="text-2xl font-black text-white tabular-nums"
+                              >
+                                {live.homeScore ?? '0'}
+                              </motion.div>
+                            ) : finished && match.result === 'home' ? (
+                              <div className="text-xl font-black text-green-400">WON</div>
+                            ) : (
+                              <div className="text-sm font-bold text-gray-500">-</div>
+                            )}
+                          </div>
+
+                          {/* VS Separator */}
+                          <div className="flex flex-col items-center px-2">
+                            <span className="text-xs text-gray-600 font-bold">VS</span>
+                          </div>
+
+                          {/* Away Team + Score */}
+                          <div className="flex-1 min-w-0 text-right">
+                            <div className="flex items-center gap-2 mb-2 justify-end">
+                              <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
+                              <Badge url={match.awayBadge} name={match.awayTeam} size={28}/>
+                            </div>
+                            {live ? (
+                              <motion.div
+                                key={live.awayScore}
+                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                transition={{ duration:0.4 }}
+                                className="text-2xl font-black text-white tabular-nums text-right"
+                              >
+                                {live.awayScore ?? '0'}
+                              </motion.div>
+                            ) : finished && match.result === 'away' ? (
+                              <div className="text-xl font-black text-green-400">WON</div>
+                            ) : (
+                              <div className="text-sm font-bold text-gray-500 text-right">-</div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
