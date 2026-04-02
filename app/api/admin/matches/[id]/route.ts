@@ -12,6 +12,13 @@ const WINS: Record<string, string[]> = {
   away: ['away', 'x2', '12'],
 };
 
+// Inverse bet winners (opposite of normal)
+const INVERSE_WINS: Record<string, string[]> = {
+  home: ['draw', 'away', 'x2'],
+  draw: ['home', 'away', '12'],
+  away: ['home', 'draw', '1x'],
+};
+
 // Check if a goal bet wins based on scores
 function checkGoalBet(selection: string, homeScore: number, awayScore: number): boolean {
   const total = homeScore + awayScore;
@@ -108,20 +115,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     let refundedCount = 0;
 
     for (const bet of bets) {
-      // Check if it's a result bet or goal bet
       const isResultBet = RESULT_SELECTIONS.includes(bet.selection);
       const isGoalBet   = GOAL_SELECTIONS.includes(bet.selection);
+      const isInverse   = bet.isInverse === true;
 
       let isWinner = false;
 
       if (isResultBet) {
-        isWinner = winningSelections.includes(bet.selection);
+        if (isInverse) {
+          isWinner = INVERSE_WINS[result].includes(bet.selection);
+        } else {
+          isWinner = winningSelections.includes(bet.selection);
+        }
       } else if (isGoalBet) {
         isWinner = checkGoalBet(bet.selection, hScore, aScore);
+        if (isInverse) isWinner = !isWinner;
       }
 
       if (isWinner) {
-        // Winner: pay stake × odd
         const payout   = parseFloat((bet.amount * bet.multiplier).toFixed(6));
         bet.payout     = payout;
         bet.status     = 'won';
@@ -132,8 +143,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           await user.save();
         }
         winnersCount++;
-      } else if (useMoneyBack) {
-        // Money-back: refund stake only, no winnings
+      } else if (useMoneyBack && !isInverse) {
         bet.payout = bet.amount;
         bet.status = 'refunded';
         await bet.save();
@@ -143,8 +153,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           await user.save();
         }
         refundedCount++;
+      } else if (useMoneyBack && isInverse) {
+        bet.payout = 0;
+        bet.status = 'lost';
+        await bet.save();
+        const user = await User.findById(bet.userId);
+        if (user) {
+          const refundAmount = bet.details?.liability ?? bet.amount;
+          user.balance = parseFloat((user.balance + refundAmount).toFixed(6));
+          await user.save();
+        }
+        refundedCount++;
       } else {
-        // Normal loss: stake kept by house
         bet.status = 'lost';
         await bet.save();
         losersCount++;

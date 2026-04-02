@@ -19,21 +19,29 @@ import Transaction    from '@/models/Transaction';
 import Notification   from '@/models/Notification';
 import Settings       from '@/models/Settings';
 
-const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
-const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
+function ok()  { return new Response('ok',    { status: 200 }); }
+function bad() { return new Response('error', { status: 400 }); }
 
-// All payment-originated webhook types (from docs)
 const PAYMENT_TYPES = new Set([
   'invoice', 'white_label', 'static_address', 'payment_link', 'donation',
 ]);
 
-function ok()  { return new Response('ok',    { status: 200 }); }
-function bad() { return new Response('error', { status: 400 }); }
-
 export async function POST(req: Request): Promise<Response> {
+  const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
+  const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
   const rawBody    = await req.text();
-  const hmacHeader = req.headers.get('hmac');
-  if (!hmacHeader) return bad();
+  const hmacHeader = req.headers.get('HMAC') || req.headers.get('hmac');
+
+  console.log('[OxaPay] Webhook received');
+  console.log('[OxaPay] HMAC header:', hmacHeader ? 'present' : 'MISSING');
+  console.log('[OxaPay] Raw body:', rawBody);
+  console.log('[OxaPay] Merchant key (first 8):', MERCHANT_KEY?.substring(0, 8) || 'UNDEFINED');
+
+  if (!hmacHeader) {
+    console.error('[OxaPay] No HMAC header found');
+    console.error('[OxaPay] Available headers:', Array.from(req.headers.keys()));
+    return bad();
+  }
 
   let body: Record<string, unknown>;
   try { body = JSON.parse(rawBody); } catch { return bad(); }
@@ -53,8 +61,14 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const calculated = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+  console.log('[OxaPay] Calculated HMAC:', calculated);
+  console.log('[OxaPay] Received HMAC:', hmacHeader);
+  console.log('[OxaPay] Type:', type, '| Status:', status);
+
   if (calculated !== hmacHeader) {
-    console.error('OxaPay webhook: HMAC mismatch');
+    console.error('[OxaPay] HMAC mismatch');
+    console.error('[OxaPay] Calculated:', calculated);
+    console.error('[OxaPay] Received:', hmacHeader);
     return bad();
   }
 
@@ -72,7 +86,8 @@ export async function POST(req: Request): Promise<Response> {
   const minDeposit = settings?.minDepositAmount ?? 10;
 
   // ── Payment received ────────────────────────────────────────────────────────
-  if (type && PAYMENT_TYPES.has(type) && status === 'Paid') {
+  if (type && PAYMENT_TYPES.has(type) && status?.toLowerCase() === 'paid') {
+    console.log('[OxaPay] Payment webhook received:', { type, status, track_id, order_id, amount });
     if (!track_id) { console.error('OxaPay webhook: missing track_id'); return ok(); }
     if (amount < minDeposit) {
       console.warn(`OxaPay webhook: deposit ${amount} below min ${minDeposit}`);
@@ -89,10 +104,17 @@ export async function POST(req: Request): Promise<Response> {
 
     // Idempotency: skip if already processed
     const existing = await Transaction.findOne({ txId: track_id, type: 'deposit' });
-    if (existing) return ok();
+    if (existing) {
+      console.log('[OxaPay] Transaction already processed:', track_id);
+      return ok();
+    }
+
+    console.log('[OxaPay] Crediting user:', userId, 'amount:', amount);
 
     user.balance = parseFloat((user.balance + amount).toFixed(6));
     await user.save();
+
+    console.log('[OxaPay] User balance updated. New balance:', user.balance);
 
     await Transaction.create({
       userId:   user._id,
@@ -111,6 +133,8 @@ export async function POST(req: Request): Promise<Response> {
       type:   'personal',
       icon:   '💰',
     });
+
+    console.log('[OxaPay] Deposit processed successfully. User:', userId, 'Amount:', amount);
 
     // Referral bonus
     if (user.referrerCode) {
@@ -169,6 +193,8 @@ export async function POST(req: Request): Promise<Response> {
         }
       }
     }
+  } else {
+    console.log('[OxaPay] Webhook not processed. Type:', type, 'Status:', status);
   }
 
   return ok();

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Home, Trophy, Wallet, Users, Shield, LogOut, LogIn,
   UserPlus, Briefcase, Menu, X, ChevronRight, ChevronLeft,
-  MessageSquare, Bell,
+  MessageSquare, Bell, Gamepad2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Mascot from './Mascot';
@@ -96,6 +96,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { name:'Home',    path:'/',          icon:Home         },
     { name:'Sports',  path:'/sports',    icon:Trophy       },
+    { name:'Games',   path:'/games',     icon:Gamepad2     },
     { name:'Wallet',  path:'/wallet',    icon:Wallet       },
     { name:'Refer',   path:'/referrals', icon:Users        },
     { name:'Support', path:'/support',   icon:MessageSquare},
@@ -104,6 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const sideItems = [
     { label:'Dashboard',    path:'/',          icon:Home           },
     { label:'Sports Betting', path:'/sports',    icon:Trophy         },
+    { label:'Inverse Betting', path:'/games',    icon:Gamepad2       },
     { label:'My Wallet',      path:'/wallet',    icon:Wallet         },
     { label:'Referrals',      path:'/referrals', icon:Users          },
     { label:'Careers',        path:'/careers',   icon:Briefcase      },
