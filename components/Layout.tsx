@@ -412,7 +412,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
             <Link href="/" className="flex items-center gap-1.5 shrink-0">
               <Mascot className="w-7 h-7"/>
-              <span className="font-black text-sm tracking-wide">BETS</span>
+              <span className="font-black text-sm tracking-wide">BETS PRO</span>
             </Link>
             <div className="flex-1"/>
             {user ? (

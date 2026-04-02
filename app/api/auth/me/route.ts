@@ -25,13 +25,14 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       user: {
-        id:             user._id,
-        email:          user.email,
-        username:       user.username,
-        balance:        user.balance,
-        depositAddress: user.depositAddress,
-        role:           user.role,
-        myReferralCode: user.myReferralCode,
+        id:              user._id,
+        email:           user.email,
+        username:        user.username,
+        balance:         user.balance,
+        depositAddress:  user.depositAddress,
+        role:            user.role,
+        myReferralCode:  user.myReferralCode,
+        welcomeBonusSeen: user.welcomeBonusSeen ?? false,
       },
     });
   } catch (error: unknown) {

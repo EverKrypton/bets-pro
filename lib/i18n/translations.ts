@@ -135,6 +135,7 @@ export const translations = {
       currentPassword: 'Current Password',
       newPassword: 'New Password',
       passwordUpdated: 'Password updated successfully',
+      processedWithin: 'Processed within 24 hours.',
     },
     bonus: {
       title: 'Bonuses',
@@ -400,6 +401,7 @@ export const translations = {
       currentPassword: 'Contraseña Actual',
       newPassword: 'Nueva Contraseña',
       passwordUpdated: 'Contraseña actualizada exitosamente',
+      processedWithin: 'Procesado en 24 horas.',
     },
     bonus: {
       title: 'Bonos',

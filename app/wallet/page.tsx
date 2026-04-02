@@ -365,7 +365,7 @@ export default function WalletPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={16} className="text-yellow-400 mt-0.5 shrink-0"/>
               <p className="text-xs text-gray-400 leading-relaxed">
-                <span className="text-yellow-400 font-bold">{t.wallet.minDeposit}: 10 USDT · {t.wallet.withdrawFee}: 1 USDT.</span> Processed within 24h after admin approval.
+                <span className="text-yellow-400 font-bold">{t.wallet.minDeposit}: 10 USDT · {t.wallet.withdrawFee}: 1 USDT.</span> {t.wallet.processedWithin}
               </p>
             </div>
 
