@@ -19,29 +19,21 @@ import Transaction    from '@/models/Transaction';
 import Notification   from '@/models/Notification';
 import Settings       from '@/models/Settings';
 
+const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
+const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
+
+// All payment-originated webhook types (from docs)
+const PAYMENT_TYPES = new Set([
+  'invoice', 'white_label', 'static_address', 'payment_link', 'donation', 'payment',
+]);
+
 function ok()  { return new Response('ok',    { status: 200 }); }
 function bad() { return new Response('error', { status: 400 }); }
 
-const PAYMENT_TYPES = new Set([
-  'invoice', 'white_label', 'static_address', 'payment_link', 'donation',
-]);
-
 export async function POST(req: Request): Promise<Response> {
-  const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
-  const PAYOUT_KEY   = process.env.OXAPAY_PAYOUT_API_KEY;
   const rawBody    = await req.text();
-  const hmacHeader = req.headers.get('HMAC') || req.headers.get('hmac');
-
-  console.log('[OxaPay] Webhook received');
-  console.log('[OxaPay] HMAC header:', hmacHeader ? 'present' : 'MISSING');
-  console.log('[OxaPay] Raw body:', rawBody);
-  console.log('[OxaPay] Merchant key (first 8):', MERCHANT_KEY?.substring(0, 8) || 'UNDEFINED');
-
-  if (!hmacHeader) {
-    console.error('[OxaPay] No HMAC header found');
-    console.error('[OxaPay] Available headers:', Array.from(req.headers.keys()));
-    return bad();
-  }
+  const hmacHeader = req.headers.get('hmac');
+  if (!hmacHeader) return bad();
 
   let body: Record<string, unknown>;
   try { body = JSON.parse(rawBody); } catch { return bad(); }
@@ -49,6 +41,7 @@ export async function POST(req: Request): Promise<Response> {
   // Exact field name from docs: "type"
   const type   = body.type   as string | undefined;
   const status = body.status as string | undefined;
+  console.log('OxaPay webhook received:', { type, status, track_id: body.track_id });
 
   // Pick the right key for HMAC validation
   const secret = type && PAYMENT_TYPES.has(type) ? MERCHANT_KEY
@@ -61,20 +54,15 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const calculated = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
-  console.log('[OxaPay] Calculated HMAC:', calculated);
-  console.log('[OxaPay] Received HMAC:', hmacHeader);
-  console.log('[OxaPay] Type:', type, '| Status:', status);
-
-  if (calculated !== hmacHeader) {
-    console.error('[OxaPay] HMAC mismatch');
-    console.error('[OxaPay] Calculated:', calculated);
-    console.error('[OxaPay] Received:', hmacHeader);
+  if (calculated.toLowerCase() !== hmacHeader.trim().toLowerCase()) {
+    console.error('OxaPay webhook: HMAC mismatch');
     return bad();
   }
 
   // ── Field names exactly as documented ──────────────────────────────────────
   const track_id = body.track_id as string | undefined;
   const order_id = body.order_id as string | undefined;
+  const address  = body.address as string | undefined;
   // amount is a decimal number in the IPN payload
   const amount   = typeof body.amount === 'number'
     ? body.amount
@@ -86,35 +74,50 @@ export async function POST(req: Request): Promise<Response> {
   const minDeposit = settings?.minDepositAmount ?? 10;
 
   // ── Payment received ────────────────────────────────────────────────────────
-  if (type && PAYMENT_TYPES.has(type) && status?.toLowerCase() === 'paid') {
-    console.log('[OxaPay] Payment webhook received:', { type, status, track_id, order_id, amount });
+  if (type && PAYMENT_TYPES.has(type) && status === 'Paid') {
     if (!track_id) { console.error('OxaPay webhook: missing track_id'); return ok(); }
     if (amount < minDeposit) {
       console.warn(`OxaPay webhook: deposit ${amount} below min ${minDeposit}`);
       return ok();
     }
-    if (!order_id) { console.error('OxaPay webhook: missing order_id'); return ok(); }
+    let user = null;
 
-    // order_id format: "deposit-{userId}"
-    const userId = order_id.startsWith('deposit-') ? order_id.slice(8) : null;
-    if (!userId) { console.error('OxaPay webhook: cannot parse userId from', order_id); return ok(); }
+    if (order_id && order_id.startsWith('deposit-')) {
+      const userId = order_id.slice(8);
+      user = await User.findById(userId);
+      if (!user) console.error('OxaPay webhook: user not found from order_id', userId);
+    }
 
-    const user = await User.findById(userId);
-    if (!user) { console.error('OxaPay webhook: user not found', userId); return ok(); }
 
-    // Idempotency: skip if already processed
-    const existing = await Transaction.findOne({ txId: track_id, type: 'deposit' });
-    if (existing) {
-      console.log('[OxaPay] Transaction already processed:', track_id);
+    if (!user && address) {
+      user = await User.findOne({ depositAddress: address });
+      if (!user) console.error('OxaPay webhook: user not found from address', address);
+    }
+
+    if (!user && track_id) {
+      user = await User.findOne({ depositTrackId: track_id });
+      if (!user) console.error('OxaPay webhook: user not found from track_id', track_id);
+    }
+
+
+
+    if (!user && address) {
+      user = await User.findOne({ depositAddress: address });
+      if (!user) console.error('OxaPay webhook: user not found from address', address);
+    }
+
+
+    if (!user) {
+      console.error('OxaPay webhook: unable to resolve user. order_id:', order_id, 'address:', address);
       return ok();
     }
 
-    console.log('[OxaPay] Crediting user:', userId, 'amount:', amount);
+    // Idempotency: skip if already processed
+    const existing = await Transaction.findOne({ txId: track_id, type: 'deposit' });
+    if (existing) return ok();
 
     user.balance = parseFloat((user.balance + amount).toFixed(6));
     await user.save();
-
-    console.log('[OxaPay] User balance updated. New balance:', user.balance);
 
     await Transaction.create({
       userId:   user._id,
@@ -123,7 +126,7 @@ export async function POST(req: Request): Promise<Response> {
       currency: 'USDT',
       status:   'completed',
       txId:     track_id,
-      details:  { order_id, address: user.depositAddress, network: body.network ?? 'BSC' },
+      details:  { order_id, address: address || user.depositAddress, network: body.network ?? 'BSC' },
     });
 
     await Notification.create({
@@ -133,8 +136,7 @@ export async function POST(req: Request): Promise<Response> {
       type:   'personal',
       icon:   '💰',
     });
-
-    console.log('[OxaPay] Deposit processed successfully. User:', userId, 'Amount:', amount);
+    console.log('OxaPay webhook: deposit credited', { userId: user._id.toString(), amount, track_id });
 
     // Referral bonus
     if (user.referrerCode) {
@@ -193,8 +195,10 @@ export async function POST(req: Request): Promise<Response> {
         }
       }
     }
-  } else {
-    console.log('[OxaPay] Webhook not processed. Type:', type, 'Status:', status);
+  }
+
+  if (type && PAYMENT_TYPES.has(type) && status !== 'Paid') {
+    console.log('OxaPay webhook: payment event ignored due to status', { status, track_id });
   }
 
   return ok();

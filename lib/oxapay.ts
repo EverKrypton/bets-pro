@@ -1,28 +1,32 @@
 /**
- * OxaPay API Client - Direct implementation
- * Uses axios directly to avoid SDK file system issues in Next.js serverless
+ * OxaPay API Client using official oxapay package
+ * With workaround for Next.js bundling issue
  */
 
-import axios from 'axios';
+import Oxapay from 'oxapay';
 
-const API_BASE_URL = 'https://api.oxapay.com/v1/payment/';
+const MERCHANT_KEY = process.env.OXAPAY_MERCHANT_API_KEY;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+
+// Inline the method info to avoid file read error in Next.js
+const METHOD_INFOS = {
+  Payment: {
+    generateInvoice: { reqType: 'POST', path: 'invoice' },
+    generateWhiteLabel: { reqType: 'POST', path: 'white-label' },
+    generateStaticAddress: { reqType: 'POST', path: 'static-address' },
+    revokeStaticAddress: { reqType: 'POST', path: 'static-address/revoke' },
+    listStaticAddress: { reqType: 'GET', path: 'static-address' },
+    paymentInfo: { reqType: 'GET', path: '' },
+    paymentHistory: { reqType: 'GET', path: '' },
+    acceptedCurrencies: { reqType: 'GET', path: 'accepted-currencies' },
+  },
+};
 
 export interface StaticAddressResult {
-  track_id: string;
   address: string;
   network: string;
   currency: string;
-}
-
-export interface OxaPayResponse<T> {
-  status: number;
-  message: string;
-  data?: T;
-  error?: {
-    type: string;
-    key: string;
-    message: string;
-  };
+  track_id: string;
 }
 
 export async function createStaticAddress(userId: string): Promise<{ data: StaticAddressResult }> {
@@ -36,55 +40,46 @@ export async function createStaticAddress(userId: string): Promise<{ data: Stati
     throw new Error('NEXT_PUBLIC_APP_URL not configured');
   }
 
-  const callbackUrl = `${appUrl}/api/webhook/oxapay`;
+  const callbackUrl = `${appUrl.replace(/\/+$/, '')}/api/webhook/oxapay`;
   const orderId = `deposit-${userId}`;
 
   console.log('[OxaPay] Creating static address for user:', userId);
   console.log('[OxaPay] Callback URL:', callbackUrl);
-  console.log('[OxaPay] Using merchant key (first 8 chars):', merchantKey.substring(0, 8) + '...');
 
   try {
-    const response = await axios.post<OxaPayResponse<{track_id: string; address: string; network: string; qr_code: string; date: number}>>(
-      `${API_BASE_URL}static-address`,
-      {
-        network: 'BSC',
-        to_currency: 'USDT',
-        auto_withdrawal: 0,
-        callback_url: callbackUrl,
-        order_id: orderId,
-        description: `Bets Pro deposit – user ${userId}`,
-      },
-      {
-        headers: {
-          'merchant_api_key': merchantKey,
-          'Content-Type': 'application/json',
-        },
-        validateStatus: () => true,
-      }
-    );
+    const payment = new Oxapay.v1.payment(merchantKey);
+    
+    // Inject methodInfos to avoid file read
+    (payment as any).methods = METHOD_INFOS.Payment;
+    (payment as any).initialization = Promise.resolve();
 
-    console.log('[OxaPay] Response status:', response.status);
-    console.log('[OxaPay] Response data:', JSON.stringify(response.data));
+    const result = await payment.generateStaticAddress({
+      network: 'BSC',
+      to_currency: 'USDT',
+      auto_withdrawal: true,
+      callback_url: callbackUrl,
+      order_id: orderId,
+      description: `Bets Pro deposit – user ${userId}`,
+    });
 
-    if (response.data.status !== 200 || !response.data.data) {
-      const errMsg = response.data.error?.message || response.data.message || `OxaPay error: ${response.data.status}`;
-      console.error('[OxaPay] API error:', errMsg);
+    console.log('[OxaPay] Response:', JSON.stringify(result));
+
+    if (result.status !== 200 || !result.data) {
+      const errMsg = result.error?.message || result.message || `OxaPay error: ${result.status}`;
       throw new Error(errMsg);
     }
 
     return {
       data: {
-        address: response.data.data.address,
-        network: response.data.data.network,
+        address: result.data.address,
+        network: result.data.network,
         currency: 'USDT',
-        track_id: response.data.data.track_id,
+        track_id: result.data.track_id,
       },
     };
   } catch (error: any) {
     console.error('[OxaPay] Error:', error?.message);
-    if (error?.response?.data) {
-      console.error('[OxaPay] Response data:', JSON.stringify(error.response.data));
-    }
+    console.error('[OxaPay] Response:', error?.response?.data);
     throw error;
   }
 }
@@ -96,15 +91,9 @@ export async function getPaymentInfo(trackId: string): Promise<any> {
     throw new Error('OXAPAY_MERCHANT_API_KEY not configured');
   }
 
-  const response = await axios.get<OxaPayResponse<any>>(
-    `${API_BASE_URL}${trackId}`,
-    {
-      headers: {
-        'merchant_api_key': merchantKey,
-      },
-      validateStatus: () => true,
-    }
-  );
+  const payment = new Oxapay.v1.payment(merchantKey);
+  (payment as any).methods = METHOD_INFOS.Payment;
+  (payment as any).initialization = Promise.resolve();
 
-  return response.data;
+  return await payment.paymentInfo({ track_id: trackId });
 }
