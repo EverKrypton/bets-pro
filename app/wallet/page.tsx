@@ -7,6 +7,7 @@ import {
   Loader2, Clock, CreditCard, Info, Send, KeyRound,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Tx { _id: string; type: string; amount: number; status: string; createdAt: string; details?: any; }
 
@@ -18,6 +19,7 @@ const STATUS_COLOR: Record<string,string> = {
 };
 
 export default function WalletPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab]           = useState<'deposit'|'rub'|'withdraw'|'history'|'security'>('deposit');
   const [amount, setAmount]                 = useState('');
   const [address, setAddress]               = useState('');
@@ -145,11 +147,11 @@ export default function WalletPage() {
     ? Math.max(0, Number(amount) - 1).toFixed(2) : '0.00';
 
   const TABS = [
-    { key: 'deposit',  label: 'USDT',    icon: ArrowDownToLine },
-    { key: 'rub',      label: 'RUB ₽',   icon: CreditCard      },
-    { key: 'withdraw', label: 'Withdraw', icon: ArrowUpFromLine },
-    { key: 'history',  label: 'History',  icon: Clock           },
-    { key: 'security', label: 'Security', icon: KeyRound        },
+    { key: 'deposit',  label: 'USDT',       icon: ArrowDownToLine },
+    { key: 'rub',      label: 'RUB ₽',      icon: CreditCard      },
+    { key: 'withdraw', label: t.wallet.withdrawTab, icon: ArrowUpFromLine },
+    { key: 'history',  label: t.wallet.historyTab,  icon: Clock           },
+    { key: 'security', label: t.wallet.securityTab, icon: KeyRound        },
   ] as const;
 
   return (
@@ -158,7 +160,7 @@ export default function WalletPage() {
 
         {/* Balance card */}
         <div className="bg-surface border border-white/8 rounded-2xl p-5">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Total Balance</p>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{t.wallet.balance}</p>
           <div className="flex items-end gap-2 mb-4">
             <span className="text-4xl font-black">{balance.toFixed(2)}</span>
             <span className="text-accent font-black text-lg mb-0.5">USDT</span>
@@ -167,12 +169,12 @@ export default function WalletPage() {
             <button onClick={() => setActiveTab('deposit')}
               className="flex-1 bg-accent text-white py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-accent/90 transition-colors"
             >
-              <ArrowDownToLine size={14}/> Deposit
+              <ArrowDownToLine size={14}/> {t.wallet.depositTab}
             </button>
             <button onClick={() => setActiveTab('withdraw')}
               className="flex-1 bg-surface border border-white/10 text-gray-300 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-white/5 transition-colors"
             >
-              <ArrowUpFromLine size={14}/> Withdraw
+              <ArrowUpFromLine size={14}/> {t.wallet.withdrawTab}
             </button>
           </div>
         </div>
@@ -226,7 +228,7 @@ export default function WalletPage() {
                     onClick={() => { navigator.clipboard.writeText(depositAddress); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                     className="shrink-0 bg-surface border border-white/8 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-white/5 flex items-center gap-1"
                   >
-                    {copied ? <span className="text-green-400">Copied!</span> : <><Copy size={12}/> Copy</>}
+                    {copied ? <span className="text-green-400">{t.wallet.addressCopied}</span> : <><Copy size={12}/> {t.wallet.copyAddress}</>}
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-600 text-center font-bold">
@@ -237,7 +239,7 @@ export default function WalletPage() {
               <button onClick={handleGetDepositAddress} disabled={loading}
                 className="w-full py-3.5 rounded-xl bg-accent text-white font-black text-sm uppercase tracking-wider hover:bg-accent/90 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 size={16} className="animate-spin"/> Generating...</> : '+ Get My Deposit Address'}
+                {loading ? <><Loader2 size={16} className="animate-spin"/> {t.common.loading}</> : '+ Get My Deposit Address'}
               </button>
             )}
           </motion.div>
@@ -279,7 +281,7 @@ export default function WalletPage() {
                     onClick={() => { navigator.clipboard.writeText(rubBankDetails); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                     className="shrink-0 bg-surface border border-white/8 px-3 py-1.5 rounded-lg text-xs font-black hover:bg-white/5 flex items-center gap-1"
                   >
-                    {copied ? <span className="text-green-400">Copied!</span> : <><Copy size={12}/> Copy</>}
+                    {copied ? <span className="text-green-400">{t.referral.copied}</span> : <><Copy size={12}/> {t.referral.copyCode}</>}
                   </button>
                 </div>
               ) : (
@@ -292,14 +294,14 @@ export default function WalletPage() {
             {rubSubmitted ? (
               <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-5 text-center space-y-2">
                 <CheckCircle2 size={32} className="text-green-400 mx-auto"/>
-                <p className="font-black text-green-400">Request Submitted!</p>
+                <p className="font-black text-green-400">{t.common.success}</p>
                 <p className="text-xs text-gray-400">
                   Expected credit: <span className="text-white font-bold">{rubUsdPreview} USDT</span>
                 </p>
                 <p className="text-xs text-gray-500">Admin will process within 30 minutes.</p>
                 <button onClick={() => setRubSubmitted(false)}
                   className="mt-2 text-xs font-black text-accent underline"
-                >Submit another</button>
+                >{t.common.submit}</button>
               </div>
             ) : (
               <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
@@ -315,7 +317,7 @@ export default function WalletPage() {
                     />
                   </div>
                   {rubPreview && (
-                    <p className="text-xs text-accent font-bold mt-1.5 pl-1">≈ {rubPreview} USDT at current rate</p>
+                    <p className="text-xs text-accent font-bold mt-1.5 pl-1">≈ {rubPreview} USDT</p>
                   )}
                 </div>
 
@@ -363,12 +365,12 @@ export default function WalletPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={16} className="text-yellow-400 mt-0.5 shrink-0"/>
               <p className="text-xs text-gray-400 leading-relaxed">
-                <span className="text-yellow-400 font-bold">Min 10 USDT · Fee 1 USDT.</span> Processed within 24h after admin approval.
+                <span className="text-yellow-400 font-bold">{t.wallet.minDeposit}: 10 USDT · {t.wallet.withdrawFee}: 1 USDT.</span> Processed within 24h after admin approval.
               </p>
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Network</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.wallet.network}</label>
               <select value={network} onChange={e => setNetwork(e.target.value)}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none font-bold text-sm focus:border-accent/50"
               >
@@ -377,7 +379,7 @@ export default function WalletPage() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Wallet Address</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.wallet.withdrawAddress}</label>
               <input type="text" value={address} onChange={e => setAddress(e.target.value)}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none font-medium text-sm focus:border-accent/50"
                 placeholder="Your USDT address"
@@ -385,10 +387,10 @@ export default function WalletPage() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Amount (USDT)</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.wallet.withdrawAmount}</label>
               <div className="flex bg-background border border-white/8 rounded-xl overflow-hidden focus-within:border-accent/50">
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
-                  className="flex-1 bg-transparent px-4 py-3 outline-none font-black" placeholder="Min 10" min={10}
+                  className="flex-1 bg-transparent px-4 py-3 outline-none font-black" placeholder={`Min ${t.wallet.minDeposit}`} min={10}
                 />
                 <button onClick={() => setAmount(Math.floor(balance).toString())}
                   className="px-4 text-xs font-black text-accent hover:bg-white/5 transition-colors uppercase"
@@ -397,14 +399,14 @@ export default function WalletPage() {
             </div>
 
             <div className="flex justify-between text-xs text-gray-500 font-bold px-0.5">
-              <span>Fee: 1 USDT</span>
-              <span>Receive: <span className="text-white">{receive}</span> USDT</span>
+              <span>{t.wallet.withdrawFee}: 1 USDT</span>
+              <span>{t.wallet.youReceive}: <span className="text-white">{receive}</span> USDT</span>
             </div>
 
             <button onClick={handleWithdraw} disabled={loading || !amount || Number(amount) < 10 || !address}
               className="w-full py-3.5 rounded-xl bg-surface border border-white/10 text-white font-black text-sm uppercase tracking-wider hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? <><Loader2 size={16} className="animate-spin"/> Submitting...</> : 'Request Withdrawal'}
+              {loading ? <><Loader2 size={16} className="animate-spin"/> {t.common.loading}</> : t.wallet.withdrawBtn}
             </button>
           </motion.div>
         )}
@@ -413,24 +415,24 @@ export default function WalletPage() {
         {activeTab === 'security' && (
           <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="bg-surface border border-white/8 rounded-2xl p-4 space-y-4">
             <p className="text-xs font-black uppercase tracking-wider text-gray-500 flex items-center gap-2">
-              <KeyRound size={12} className="text-accent"/> Change Password
+              <KeyRound size={12} className="text-accent"/> {t.wallet.changePassword}
             </p>
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Current Password</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.wallet.currentPassword}</label>
               <input type="password" value={curPass} onChange={e => setCurPass(e.target.value)}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none text-sm focus:border-accent/50 transition-colors"
                 placeholder="Your current password"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">New Password</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.wallet.newPassword}</label>
               <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 outline-none text-sm focus:border-accent/50 transition-colors"
                 placeholder="At least 8 characters"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">Confirm New Password</label>
+              <label className="text-xs text-gray-400 font-bold uppercase mb-2 block">{t.auth.confirmPassword}</label>
               <input type="password" value={confPass} onChange={e => setConfPass(e.target.value)}
                 className={`w-full bg-background border rounded-xl px-4 py-3 outline-none text-sm transition-colors ${
                   confPass && confPass !== newPass ? 'border-red-500/50' : 'border-white/8 focus:border-accent/50'
@@ -445,17 +447,17 @@ export default function WalletPage() {
               disabled={changingPass || !curPass || !newPass || !confPass || newPass !== confPass}
               className="w-full py-3.5 rounded-xl bg-accent text-white font-black text-sm uppercase tracking-wider hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {changingPass ? <><Loader2 size={15} className="animate-spin"/> Changing...</> : 'Update Password'}
+              {changingPass ? <><Loader2 size={15} className="animate-spin"/> {t.common.loading}</> : t.common.save}
             </button>
           </motion.div>
         )}
 
-        {/* History */}
+{/* History */}
         {activeTab === 'history' && (
           <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="bg-surface border border-white/8 rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/5 font-black text-sm uppercase tracking-wider">History</div>
+            <div className="px-4 py-3 border-b border-white/5 font-black text-sm uppercase tracking-wider">{t.wallet.historyTab}</div>
             {history.length === 0
-              ? <p className="text-center text-gray-600 text-sm py-10">No transactions yet</p>
+              ? <p className="text-center text-gray-600 text-sm py-10">{t.wallet.noTransactions}</p>
               : <div className="divide-y divide-white/5">
                   {history.map(tx => (
                     <div key={tx._id} className="px-4 py-3 flex justify-between items-center">

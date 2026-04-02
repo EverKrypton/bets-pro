@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, X, Sparkles, TrendingUp, Users, Target, ChevronRight } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -11,19 +12,20 @@ interface WelcomeModalProps {
 
 export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
   const [step, setStep] = useState(0);
+  const { t } = useLanguage();
 
   const steps = [
     {
-      title: 'Welcome to Bets Pro',
-      subtitle: 'Your Premium Betting Platform',
-      content: 'Experience the thrill of sports betting with competitive odds, instant deposits, and lightning-fast withdrawals.',
+      title: t.welcome.title,
+      subtitle: t.welcome.subtitle,
+      content: t.welcome.description,
       icon: Sparkles,
       gradient: 'from-purple-500 to-pink-500',
     },
     {
-      title: 'Claim Your Welcome Bonus',
-      subtitle: 'Up to 50% on First Deposit',
-      content: 'Deposit $100+ and get up to 50% bonus! The more you deposit, the bigger your bonus.',
+      title: t.welcome.bonusTitle,
+      subtitle: t.welcome.bonusSubtitle,
+      content: t.welcome.bonusDescription,
       icon: Gift,
       gradient: 'from-yellow-500 to-orange-500',
       table: [
@@ -34,15 +36,15 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
       ],
     },
     {
-      title: 'How to Claim',
-      subtitle: 'Simple 3-Step Process',
+      title: t.welcome.howToClaim,
+      subtitle: t.welcome.stepsTitle,
       content: '',
       icon: Target,
       gradient: 'from-green-500 to-emerald-500',
       requirements: [
-        { icon: TrendingUp, text: 'Place bets totaling $30+' },
-        { icon: Users, text: 'Invite 3 friends who deposit' },
-        { icon: Gift, text: 'Claim your bonus!' },
+        { icon: TrendingUp, text: t.bonus.requirement1 },
+        { icon: Users, text: t.bonus.requirement2 },
+        { icon: Gift, text: t.bonus.requirement3 },
       ],
     },
   ];
@@ -51,12 +53,7 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
     if (isOpen) setStep(0);
   }, [isOpen]);
 
-  const handleClose = async () => {
-    try {
-      await fetch('/api/user/welcome-seen', { method: 'POST' });
-    } catch {
-      // silent fail
-    }
+  const handleClose = () => {
     onClose();
   };
 
@@ -187,7 +184,7 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                       onClick={() => setStep(step - 1)}
                       className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl border border-white/10 text-white font-bold text-xs sm:text-sm hover:bg-white/5 transition-colors"
                     >
-                      Back
+                      {t.common.back}
                     </button>
                   )}
                   <button
@@ -198,9 +195,9 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                         : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90'
                     }`}
                   >
-                    {step === steps.length -1 ? 'Start Betting' : (
+                    {step === steps.length -1 ? t.welcome.startBetting : (
                       <>
-                        Continue <ChevronRight size={14} className="sm:w-4 sm:h-4"/>
+                        {t.welcome.continue} <ChevronRight size={14} className="sm:w-4 sm:h-4"/>
                       </>
                     )}
                   </button>

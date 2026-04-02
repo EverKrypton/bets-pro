@@ -4,8 +4,10 @@ import { useState }    from 'react';
 import Link            from 'next/link';
 import { useRouter }   from 'next/navigation';
 import Mascot          from '@/components/Mascot';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function LoginPage() {
+  const { t }                   = useLanguage();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
@@ -39,8 +41,8 @@ export default function LoginPage() {
         <div className="flex items-center gap-3 mb-2">
           <Mascot className="h-12 w-12" />
           <div>
-            <h1 className="text-2xl font-black">Login</h1>
-            <p className="text-xs text-gray-400">Email + Password</p>
+            <h1 className="text-2xl font-black">{t.auth.loginTitle}</h1>
+            <p className="text-xs text-gray-400">{t.auth.loginSubtitle}</p>
           </div>
         </div>
 
@@ -54,7 +56,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
-          placeholder="Email"
+          placeholder={t.auth.email}
           className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors"
           required
         />
@@ -62,7 +64,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           type="password"
-          placeholder="Password"
+          placeholder={t.auth.password}
           className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors"
           required
         />
@@ -73,12 +75,12 @@ export default function LoginPage() {
         >
           {loading ? (
             <><span className="w-4 h-4 border-2 border-background/40 border-t-background rounded-full animate-spin" /> Loading...</>
-          ) : 'Login'}
+          ) : t.auth.loginBtn}
         </button>
 
         <p className="text-sm text-gray-400 text-center">
-          No account?{' '}
-          <Link href="/register" className="text-primary font-bold">Register</Link>
+          {t.auth.noAccount}{' '}
+          <Link href="/register" className="text-primary font-bold">{t.nav.register}</Link>
         </p>
       </form>
     </div>

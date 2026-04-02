@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { Clock, X, ChevronDown, ChevronUp, Info, Lock, Gift, Zap, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Odds  { home: number; draw: number; away: number; }
 interface GoalOdds {
@@ -32,15 +33,6 @@ interface SlipItem {
 }
 
 const ML: Record<string,string> = { home:'1', draw:'X', away:'2', '1x':'1X', 'x2':'X2', '12':'12' };
-const MF: Record<string,string> = {
-  home:'Home Win', draw:'Draw', away:'Away Win',
-  '1x':'Home or Draw', 'x2':'Draw or Away', '12':'Home or Away',
-  // Goal bets
-  homeOver05:'Home 1+ Goals', homeOver15:'Home 2+ Goals', homeUnder05:'Home 0 Goals',
-  awayOver05:'Away 1+ Goals', awayOver15:'Away 2+ Goals', awayUnder05:'Away 0 Goals',
-  totalOver15:'Total 2+ Goals', totalOver25:'Total 3+ Goals', totalUnder15:'Total 0-1', totalUnder25:'Total 0-2',
-  bttsYes:'Both Score', bttsNo:'One Fails',
-};
 
 function dcOdd(o: Odds, m: '1x'|'x2'|'12'): number {
   const pH=1/o.home, pD=1/o.draw, pA=1/o.away;
@@ -127,6 +119,7 @@ function LiveScore({ live }: { live: LiveEvent }) {
 }
 
 export default function SportsPage() {
+  const { t } = useLanguage();
   const [matches,      setMatches]      = useState<Match[]>([]);
   const [liveMap,      setLiveMap]      = useState<Record<string,LiveEvent>>({});
   const [prevScores,   setPrevScores]   = useState<Record<string,string>>({});
@@ -148,6 +141,15 @@ export default function SportsPage() {
   const [liveCount,    setLiveCount]    = useState(0);
   const [menuOpen,    setMenuOpen]     = useState(false);
   const timer = useRef<ReturnType<typeof setInterval>|null>(null);
+
+  const MF: Record<string,string> = {
+    home:`${t.sports.home} Win`, draw:t.sports.draw, away:`${t.sports.away} Win`,
+    '1x':`${t.sports.home} or ${t.sports.draw}`, 'x2':`${t.sports.draw} or ${t.sports.away}`, '12':`${t.sports.home} or ${t.sports.away}`,
+    homeOver05:`${t.sports.home} 1+ Goals`, homeOver15:`${t.sports.home} 2+ Goals`, homeUnder05:`${t.sports.home} 0 Goals`,
+    awayOver05:`${t.sports.away} 1+ Goals`, awayOver15:`${t.sports.away} 2+ Goals`, awayUnder05:`${t.sports.away} 0 Goals`,
+    totalOver15:'Total 2+ Goals', totalOver25:'Total 3+ Goals', totalUnder15:'Total 0-1', totalUnder25:'Total 0-2',
+    bttsYes:'Both Score', bttsNo:'One Fails',
+  };
 
   const fetchLive = useCallback(async () => {
     try {
@@ -400,10 +402,10 @@ export default function SportsPage() {
               <div className="flex items-start justify-between px-4 py-3 bg-accent/10 border-b border-accent/20">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-[10px] font-black text-accent uppercase tracking-widest">Bet Slip</p>
+                    <p className="text-[10px] font-black text-accent uppercase tracking-widest">{t.sports.betSlip}</p>
                     {slip.moneyBack && (
                       <span className="flex items-center gap-1 bg-green-500/20 text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-green-500/30">
-                        <Gift size={9}/> Money Back
+                        <Gift size={9}/> {t.sports.moneyBack}
                       </span>
                     )}
                   </div>
@@ -437,7 +439,7 @@ export default function SportsPage() {
                   >Max</button>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Potential win</span>
+                  <span className="text-xs text-gray-500">{t.sports.potentialWin}</span>
                   <span className={`font-black text-xl ${potWin ? 'text-green-400' : 'text-gray-700'}`}>
                     {potWin ? `${potWin} USDT` : '—'}
                   </span>
@@ -452,7 +454,7 @@ export default function SportsPage() {
                 >
                   {placing
                     ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Placing...</span>
-                    : 'Place Bet'}
+                    : t.sports.placeBet}
                 </button>
               </div>
             </div>
@@ -468,7 +470,7 @@ export default function SportsPage() {
         </div>
       ) : Object.keys(grouped).length===0 ? (
         <div className="text-center py-24">
-          <p className="font-bold text-sm text-gray-500">No matches available</p>
+          <p className="font-bold text-sm text-gray-500">{t.sports.noMatches}</p>
         </div>
       ) : (
         <div className="space-y-3 pb-44">
@@ -505,7 +507,7 @@ export default function SportsPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           {match.moneyBack && !closed && !finished && (
                             <span className="flex items-center gap-1 bg-green-500/15 text-green-400 text-[9px] font-black px-1.5 py-0.5 rounded-full border border-green-500/20">
-                              <Gift size={9}/> Money Back
+                              <Gift size={9}/> {t.sports.moneyBack}
                             </span>
                           )}
                           {live && <LiveScore live={live} />}
@@ -577,7 +579,7 @@ export default function SportsPage() {
                             onClick={() => setExpandedDC(p => ({...p,[match._id]:!p[match._id]}))}
                             className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-bold text-gray-600 hover:text-gray-400 transition-colors"
                           >
-                            Double Chance {dcOpen ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+                            {t.sports.doubleChance} {dcOpen ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
                           </button>
                           <AnimatePresence>
                             {dcOpen && (
@@ -601,7 +603,7 @@ export default function SportsPage() {
                                 onClick={() => setExpandedGoals(p => ({...p,[match._id]:!p[match._id]}))}
                                 className="w-full flex items-center justify-center gap-1 py-1 text-[9px] font-bold text-blue-400/70 hover:text-blue-400 transition-colors"
                               >
-                                🎯 Goals {expandedGoals[match._id] ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+                                🎯 {t.sports.goals} {expandedGoals[match._id] ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
                               </button>
                               <AnimatePresence>
                                 {expandedGoals[match._id] && (

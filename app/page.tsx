@@ -5,6 +5,7 @@ import { Trophy, ArrowRight, Zap, Users, TrendingUp, TrendingDown, AlertTriangle
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Mascot from '@/components/Mascot';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RecentBet {
   _id: string;
@@ -37,6 +38,7 @@ const STATUS_COLOR: Record<string,string> = {
 };
 
 export default function Home() {
+  const { t } = useLanguage();
   const [recentBets, setRecentBets] = useState<RecentBet[]>([]);
   const [minDeposit, setMinDeposit] = useState(10);
   const [betStats, setBetStats] = useState<BetStats | null>(null);
@@ -58,8 +60,8 @@ export default function Home() {
               <Mascot className="w-10 h-10" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-black tracking-tight leading-tight">Bets Pro</h1>
-              <p className="text-gray-500 text-xs leading-relaxed">Real matches · Real odds · Instant payouts</p>
+              <h1 className="text-lg font-black tracking-tight leading-tight">{t.home.heroTitle}</h1>
+              <p className="text-gray-500 text-xs leading-relaxed">{t.home.heroSubtitle}</p>
             </div>
           </div>
           
@@ -70,13 +72,13 @@ export default function Home() {
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
               <Trophy size={16} className="relative" />
-              <span className="relative">Bet Now</span>
+              <span className="relative">{t.home.betNow}</span>
             </Link>
             <Link href="/wallet"
               className="relative overflow-hidden bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black text-sm py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg shadow-emerald-500/25"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-              <span className="relative">+ Deposit</span>
+              <span className="relative">{t.home.deposit}</span>
             </Link>
           </div>
         </div>
@@ -84,9 +86,9 @@ export default function Home() {
         {/* Stats - Small compact cards */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label:'Deposit', value:`${minDeposit}`, unit:'USDT', color:'text-green-400' },
-            { label:'Withdraw', value:'10', unit:'USDT', color:'text-blue-400' },
-            { label:'Referral', value:'30%', unit:'', color:'text-primary' },
+            { label: t.home.depositMin, value:`${minDeposit}`, unit:'USDT', color:'text-green-400' },
+            { label: t.home.withdraw, value:'10', unit:'USDT', color:'text-blue-400' },
+            { label: t.home.referral, value:'30%', unit:'', color:'text-primary' },
           ].map(s => (
             <div key={s.label} className="bg-surface border border-white/8 rounded-xl p-2 text-center">
               <p className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{s.label}</p>
@@ -100,25 +102,25 @@ export default function Home() {
           <div className="bg-surface border border-white/8 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                <AlertTriangle size={12} className="text-yellow-500" /> Active Bets Summary
+                <AlertTriangle size={12} className="text-yellow-500" /> {t.home.activeBets}
               </h2>
               <span className="text-[10px] text-gray-500 font-bold">{betStats.pendingCount} pending</span>
             </div>
 
             {/* TotalStaked */}
             <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-3">
-              <p className="text-[10px] text-gray-500 font-bold uppercase">Total in Play</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase">{t.home.totalInPlay}</p>
               <p className="text-2xl font-black text-yellow-400">{betStats.totalStaked.toFixed(2)} <span className="text-xs text-gray-400">USDT</span></p>
             </div>
 
             {/* Distribution by Result */}
             <div>
-              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">By Result</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">{t.home.byResult}</p>
               <div className="grid grid-cols-4 gap-1">
                 {[
-                  { label: 'Home', value: betStats.distribution.byResult.home, color: 'text-blue-400' },
-                  { label: 'Draw', value: betStats.distribution.byResult.draw, color: 'text-gray-300' },
-                  { label: 'Away', value: betStats.distribution.byResult.away, color: 'text-red-400' },
+                  { label: t.sports.home, value: betStats.distribution.byResult.home, color: 'text-blue-400' },
+                  { label: t.sports.draw, value: betStats.distribution.byResult.draw, color: 'text-gray-300' },
+                  { label: t.sports.away, value: betStats.distribution.byResult.away, color: 'text-red-400' },
                   { label: 'DC', value: betStats.distribution.byResult.doubleChance, color: 'text-purple-400' },
                 ].map(r => (
                   <div key={r.label} className="bg-white/5 rounded-lg p-2 text-center">
@@ -131,14 +133,14 @@ export default function Home() {
 
             {/* Distribution by Type */}
             <div>
-              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">By Bet Type</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">{t.home.byBetType}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white/5 rounded-lg p-2 text-center">
                   <p className="text-[8px] text-gray-500 font-bold">Results</p>
                   <p className="text-lg font-black text-blue-400">{betStats.distribution.byType.results.toFixed(0)}</p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-2 text-center">
-                  <p className="text-[8px] text-gray-500 font-bold">Goals</p>
+                  <p className="text-[8px] text-gray-500 font-bold">{t.sports.goals}</p>
                   <p className="text-lg font-black text-green-400">{betStats.distribution.byType.goals.toFixed(0)}</p>
                 </div>
               </div>
@@ -146,12 +148,12 @@ export default function Home() {
 
             {/* Scenarios */}
             <div>
-              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Potential Outcome</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">{t.home.potentialOutcome}</p>
               <div className="grid grid-cols-3 gap-1">
                 {[
-                  { label: 'Home Win', s: betStats.scenarios.homeWins },
-                  { label: 'Draw', s: betStats.scenarios.draw },
-                  { label: 'Away Win', s: betStats.scenarios.awayWins },
+                  { label: t.sports.home + ' Win', s: betStats.scenarios.homeWins },
+                  { label: t.sports.draw, s: betStats.scenarios.draw },
+                  { label: t.sports.away + ' Win', s: betStats.scenarios.awayWins },
                 ].map(sc => (
                   <div key={sc.label} className="bg-white/5 rounded-lg p-2 text-center">
                     <p className="text-[8px] text-gray-500 font-bold">{sc.label}</p>
@@ -167,7 +169,7 @@ export default function Home() {
             <div className={`rounded-xl p-3 ${betStats.worstCase.profit >= 0 ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
               <div className="flex items-center gap-2">
                 {betStats.worstCase.profit >= 0 ? <TrendingUp size={14} className="text-green-400" /> : <TrendingDown size={14} className="text-red-400" />}
-                <p className="text-[10px] text-gray-500 font-bold uppercase">Worst Case ({betStats.worstCase.scenario.toUpperCase()})</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase">{t.home.worstCase} ({betStats.worstCase.scenario.toUpperCase()})</p>
               </div>
               <p className={`text-xl font-black ${betStats.worstCase.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {betStats.worstCase.profit >= 0 ? '+' : ''}{betStats.worstCase.profit.toFixed(2)} <span className="text-xs text-gray-400">USDT</span>
@@ -184,8 +186,8 @@ export default function Home() {
             <Trophy className="text-white" size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-black text-sm">SPORTSBOOK</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Live odds · Double chance · Money back</p>
+            <p className="font-black text-sm">{t.home.sportsbook}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{t.home.sportsbookSubtitle}</p>
           </div>
           <ArrowRight className="text-gray-500 group-hover:text-white group-hover:translate-x-0.5 shrink-0 transition-all" size={16} />
         </Link>
@@ -198,8 +200,8 @@ export default function Home() {
             <Users className="text-primary" size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-black text-sm">EARN WITH US</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Promote & earn up to $1,000/mo</p>
+            <p className="font-black text-sm">{t.home.earnWithUs}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{t.home.earnSubtitle}</p>
           </div>
           <ArrowRight className="text-gray-500 group-hover:text-white group-hover:translate-x-0.5 shrink-0 transition-all" size={16} />
         </Link>
@@ -207,11 +209,11 @@ export default function Home() {
         {/* Recent Bets */}
         <div>
           <h2 className="text-xs font-black uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-2">
-            <Zap size={12} className="text-primary" /> Recent Activity
+            <Zap size={12} className="text-primary" /> {t.home.recentActivity}
           </h2>
           <div className="bg-surface border border-white/8 rounded-2xl overflow-hidden divide-y divide-white/5">
             {recentBets.length === 0
-              ? <p className="text-center text-gray-600 text-xs py-6">No bets yet — be the first!</p>
+              ? <p className="text-center text-gray-600 text-xs py-6">{t.home.noBets}</p>
               : recentBets.map(bet => (
                 <div key={bet._id} className="px-3 py-2.5 flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">

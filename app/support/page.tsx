@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { MessageSquare, Plus, Send, ChevronLeft, Clock, CheckCircle2, XCircle, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Message {
   _id: string;
@@ -30,6 +31,7 @@ const STATUS_STYLE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = { open:'Open', pending:'Awaiting reply', closed:'Closed' };
 
 export default function SupportPage() {
+  const { t } = useLanguage();
   const [tickets,       setTickets]       = useState<Ticket[]>([]);
   const [activeTicket,  setActiveTicket]  = useState<Ticket|null>(null);
   const [showNewForm,   setShowNewForm]   = useState(false);
@@ -216,12 +218,12 @@ export default function SupportPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-black flex items-center gap-2 uppercase tracking-wider">
-            <MessageSquare className="text-accent" size={20}/> Support
+            <MessageSquare className="text-accent" size={20}/> {t.support.title}
           </h1>
           <button onClick={() => { setShowNewForm(v=>!v); setActiveTicket(null); }}
             className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-xl text-xs font-black uppercase hover:bg-accent/90 transition-colors"
           >
-            {showNewForm ? <><X size={13}/> Cancel</> : <><Plus size={13}/> New Ticket</>}
+            {showNewForm ? <><X size={13}/> Cancel</> : <><Plus size={13}/> {t.support.newTicket}</>}
           </button>
         </div>
 
@@ -237,17 +239,17 @@ export default function SupportPage() {
             <motion.div initial={{opacity:0,y:-8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}
               className="bg-surface border border-white/8 rounded-2xl p-4 space-y-3"
             >
-              <p className="text-xs font-black uppercase tracking-wider text-gray-500">New Support Ticket</p>
-              <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Subject (e.g. Deposit not credited)"
+              <p className="text-xs font-black uppercase tracking-wider text-gray-500">{t.support.newTicket}</p>
+              <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder={t.support.subject}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 text-sm outline-none focus:border-accent/50 transition-colors"
               />
-              <textarea value={firstMsg} onChange={e=>setFirstMsg(e.target.value)} placeholder="Describe your issue in detail..." rows={4}
+              <textarea value={firstMsg} onChange={e=>setFirstMsg(e.target.value)} placeholder={t.support.message} rows={4}
                 className="w-full bg-background border border-white/8 rounded-xl px-4 py-3 text-sm outline-none focus:border-accent/50 transition-colors resize-none"
               />
               <button onClick={createTicket} disabled={creating || !subject.trim() || !firstMsg.trim()}
                 className="w-full py-3 bg-accent text-white rounded-xl font-black text-sm uppercase hover:bg-accent/90 disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                {creating ? <><Loader2 size={14} className="animate-spin"/> Submitting...</> : <><Send size={14}/> Submit Ticket</>}
+                {creating ? <><Loader2 size={14} className="animate-spin"/> Submitting...</> : <><Send size={14}/> {t.support.send}</>}
               </button>
             </motion.div>
           )}
@@ -258,13 +260,13 @@ export default function SupportPage() {
           <div className="text-center py-16 space-y-4">
             <MessageSquare size={40} className="text-gray-700 mx-auto"/>
             <div>
-              <p className="font-black text-white">No support tickets yet</p>
+              <p className="font-black text-white">{t.support.noTickets}</p>
               <p className="text-sm text-gray-500 mt-1">Open a ticket and our team will respond within minutes</p>
             </div>
             <button onClick={() => setShowNewForm(true)}
               className="inline-flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-xl text-sm font-black hover:bg-accent/90"
             >
-              <Plus size={14}/> Open First Ticket
+              <Plus size={14}/> {t.support.newTicket}
             </button>
           </div>
         ) : (

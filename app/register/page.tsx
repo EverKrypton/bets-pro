@@ -6,8 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Mascot from '@/components/Mascot';
 import { Suspense } from 'react';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 function RegisterForm() {
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +54,8 @@ function RegisterForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (username.length < 3 || username.length > 20) { setError(t.auth.usernameLen); return; }
+    if (password.length < 8) { setError(t.auth.passwordMin); return; }
     setLoading(true); setError('');
     const res  = await fetch('/api/auth', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -87,8 +91,8 @@ function RegisterForm() {
       <div className="flex items-center gap-3 mb-2">
         <Mascot className="h-12 w-12" />
         <div>
-          <h1 className="text-2xl font-black">Register</h1>
-          <p className="text-xs text-gray-400">Create your Bets Pro account</p>
+          <h1 className="text-2xl font-black">{t.auth.registerTitle}</h1>
+          <p className="text-xs text-gray-400">{t.auth.registerSubtitle}</p>
         </div>
       </div>
 
@@ -96,13 +100,13 @@ function RegisterForm() {
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400 font-medium">{error}</div>
       )}
 
-      <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"
+      <input value={username} onChange={e => setUsername(e.target.value)} placeholder={t.auth.username}
+        className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" required minLength={3} maxLength={20}
+      />
+      <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t.auth.email}
         className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" required
       />
-      <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email"
-        className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" required
-      />
-      <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password (min. 8 characters)"
+      <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder={t.auth.password}
         className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" minLength={8} required
       />
 
@@ -126,11 +130,11 @@ function RegisterForm() {
       <button disabled={loading}
         className="w-full bg-gradient-to-r from-primary to-accent text-background rounded-xl py-3.5 font-black inline-flex items-center justify-center gap-2 disabled:opacity-50 hover:opacity-90 active:scale-[0.98] transition-all"
       >
-        {loading ? <><span className="w-4 h-4 border-2 border-background/40 border-t-background rounded-full animate-spin"/> Creating account...</> : 'Create account'}
+        {loading ? <><span className="w-4 h-4 border-2 border-background/40 border-t-background rounded-full animate-spin"/> {t.auth.registerBtn}...</> : t.auth.registerBtn}
       </button>
 
       <p className="text-sm text-gray-400 text-center">
-        Already have account? <Link href="/login" className="text-primary font-bold">Login</Link>
+        {t.auth.haveAccount} <Link href="/login" className="text-primary font-bold">{t.auth.loginBtn}</Link>
       </p>
     </form>
   );

@@ -12,6 +12,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Mascot from './Mascot';
 import WelcomeModal from './WelcomeModal';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from './LanguageSwitcher';
 
 type Role = 'user'|'mod'|'recruiter'|'admin';
 
@@ -44,6 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
   const pollRef  = useRef<ReturnType<typeof setInterval>|null>(null);
+  const { t } = useLanguage();
 
   const publicRoutes  = useMemo(() => new Set(['/', '/login', '/register', '/careers']), []);
   const isPublicRoute = publicRoutes.has(pathname);
@@ -51,27 +54,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const showAdmin = user?.role === 'admin' || user?.role === 'mod' || user?.role === 'recruiter';
 
   const sideItems: SideNavItem[] = [
-    { label: 'Dashboard',    path: '/',          icon: Home      },
-    { label: 'Sports',     path: '/sports',    icon: Trophy    },
-    { label: 'Games',      path: '/games',     icon: Gamepad2  },
-    { label: 'Wallet',       path: '/wallet',    icon: Wallet    },
+    { label: t.nav.dashboard,    path: '/',          icon: Home      },
+    { label: t.nav.sportsBetting,     path: '/sports',    icon: Trophy    },
+    { label: t.nav.inverseBetting,      path: '/games',     icon: Gamepad2  },
+    { label: t.nav.myWallet,       path: '/wallet',    icon: Wallet    },
     { 
-      label: 'Rewards', 
+      label: t.nav.rewards, 
       icon: Gift,
       children: [
-        { label: 'Bonuses', path: '/bonuses' },
-        { label: 'Referrals', path: '/referrals' },
+        { label: t.nav.bonuses, path: '/bonuses' },
+        { label: t.nav.referrals, path: '/referrals' },
       ]
     },
     { 
-      label: 'Support', 
+      label: t.nav.support, 
       icon: MessageSquare,
       children: [
-        { label: 'Live Chat', path: '/support' },
-        { label: 'FAQ', path: '/faq' },
+        { label: t.nav.liveChat, path: '/support' },
+        { label: t.nav.faq, path: '/faq' },
       ]
     },
-    ...(showAdmin ? [{ label: 'Admin Panel', path: '/admin', icon: Shield }] : []),
+    ...(showAdmin ? [{ label: t.nav.adminPanel, path: '/admin', icon: Shield }] : []),
   ];
 
   useEffect(() => {
@@ -211,6 +214,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   };
 
+  const handleWelcomeClose = async () => {
+    setShowWelcome(false);
+    try {
+      await fetch('/api/user/welcome-seen', { method: 'POST' });
+      if (user) {
+        setUser({ ...user, welcomeBonusSeen: true });
+      }
+    } catch {
+      // silent
+    }
+  };
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
       <Mascot className="w-16 h-16"/>
@@ -221,17 +236,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (!user && !isPublicRoute) return null;
 
   const navItems: NavItem[] = [
-    { name: 'Home',    path: '/',          icon: Home      },
-    { name: 'Sports',  path: '/sports',    icon: Trophy    },
-    { name: 'Games',   path: '/games',     icon: Gamepad2  },
-    { name: 'Wallet',  path: '/wallet',    icon: Wallet    },
-    { name: 'Bonus',   path: '/bonuses',   icon: Gift      },
-    { name: 'Refer',   path: '/referrals', icon: Users     },
+    { name: t.nav.home,    path: '/',          icon: Home      },
+    { name: t.nav.sports,  path: '/sports',    icon: Trophy    },
+    { name: t.nav.games,   path: '/games',     icon: Gamepad2  },
+    { name: t.nav.wallet,  path: '/wallet',    icon: Wallet    },
+    { name: t.nav.bonus,   path: '/bonuses',   icon: Gift      },
+    { name: t.nav.refer,   path: '/referrals', icon: Users     },
   ];
 
   return (
     <>
-      <WelcomeModal isOpen={showWelcome} onClose={() => setShowWelcome(false)} />
+      <WelcomeModal isOpen={showWelcome} onClose={handleWelcomeClose} />
       <div className="flex min-h-screen bg-background text-white">
 
       {/* Desktop Sidebar - hidden on mobile */}
@@ -325,11 +340,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
               <div className="px-4 py-4 border-t border-white/8">
                 {user ? (
-                  <button onClick={() => { handleLogout(); setSideNav(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                  >
-                    <LogOut size={16}/> <span className="font-bold text-sm">Sign Out</span>
-                  </button>
+                  <>
+                    <LanguageSwitcher />
+                    <button onClick={() => { handleLogout(); setSideNav(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all mt-2"
+                    >
+                      <LogOut size={16}/> <span className="font-bold text-sm">Sign Out</span>
+                    </button>
+                  </>
                 ) : (
                   <div className="flex gap-2">
                     <Link href="/login" onClick={() => setSideNav(false)} className="flex-1 py-2.5 rounded-xl border border-white/10 text-center text-xs font-black">Login</Link>
@@ -446,6 +464,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </button>
+            <LanguageSwitcher />
             <Link href="/wallet" className="flex items-center gap-2 bg-surface border border-white/8 px-4 py-2 rounded-xl hover:border-accent/40 transition-colors">
               <Wallet size={15} className="text-accent"/>
               <span className="font-black text-sm">{user?.balance?.toFixed(2)} USDT</span>

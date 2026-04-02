@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, TrendingUp, Users, CheckCircle, Clock, ChevronRight, Lock, Sparkles, HelpCircle, ChevronDown } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Bonus {
   _id: string;
@@ -32,6 +33,7 @@ interface BonusStats {
 }
 
 export default function BonusesPage() {
+  const { t } = useLanguage();
   const [bonus, setBonus] = useState<Bonus | null>(null);
   const [stats, setStats] = useState<BonusStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,8 +95,8 @@ export default function BonusesPage() {
   return (
     <Layout>
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-white mb-1">Bonuses</h1>
-        <p className="text-sm text-gray-500">Claim your rewards and track your progress</p>
+        <h1 className="text-2xl font-black text-white mb-1">{t.bonus.title}</h1>
+        <p className="text-sm text-gray-500">{t.bonus.subtitle}</p>
       </div>
 
       <AnimatePresence>
@@ -132,18 +134,18 @@ export default function BonusesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#161b22] border border-white/10 rounded-2xl p-8 text-center"
         >
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
+<div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center">
             <Gift size={36} className="text-yellow-500"/>
           </div>
-          <h2 className="text-xl font-black text-white mb-2">No Active Bonus</h2>
+          <h2 className="text-xl font-black text-white mb-2">{t.bonus.noActiveBonus}</h2>
           <p className="text-gray-400 text-sm mb-4 max-w-sm mx-auto">
-            Make your first deposit of $100+ to unlock the welcome bonus!
+            {t.bonus.noBonusDescription}
           </p>
           <a
             href="/wallet"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity"
           >
-            Deposit Now <ChevronRight size={16}/>
+            {t.bonus.depositNow}<ChevronRight size={16}/>
           </a>
         </motion.div>
       ) : (
@@ -186,8 +188,8 @@ export default function BonusesPage() {
                       )}
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-white">Welcome Bonus</h3>
-                      <p className="text-xs text-gray-500">First Deposit Reward</p>
+                      <h3 className="text-lg font-black text-white">{t.bonus.welcomeBonus}</h3>
+                      <p className="text-xs text-gray-500">{t.bonus.firstDepositReward}</p>
                     </div>
                   </div>
                 </div>
@@ -199,22 +201,22 @@ export default function BonusesPage() {
               </div>
 
               {/* Status Badge */}
-              <div className="flex items-center gap-2 mb-6">
+<div className="flex items-center gap-2 mb-6">
                 {bonus.status === 'claimed' ? (
                   <span className="px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold flex items-center gap-1.5">
-                    <CheckCircle size={12}/> Claimed
+                    <CheckCircle size={12}/> {t.bonus.claimed}
                   </span>
                 ) : canClaim ? (
                   <span className="px-3 py-1.5 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs font-bold flex items-center gap-1.5">
-                    <Sparkles size={12}/> Ready to Claim!
+                    <Sparkles size={12}/> {t.bonus.ready}
                   </span>
                 ) : (
                   <span className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-400 text-xs font-bold flex items-center gap-1.5">
-                    <Clock size={12}/> In Progress
+                    <Clock size={12}/> {t.bonus.inProgress}
                   </span>
                 )}
                 {bonus.expiresAt && bonus.status !== 'claimed' && (
-                  <span className="text-xs text-gray-500">Expires in {formatTimeLeft(bonus.expiresAt)}</span>
+                  <span className="text-xs text-gray-500">{t.bonus.expiresIn}{formatTimeLeft(bonus.expiresAt)}</span>
                 )}
               </div>
 
@@ -225,7 +227,7 @@ export default function BonusesPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <TrendingUp size={16} className="text-blue-400"/>
-                      <span className="text-sm font-bold text-white">Betting Volume</span>
+                      <span className="text-sm font-bold text-white">{t.bonus.bettingVolume}</span>
                     </div>
                     <span className="text-sm font-bold">
                       <span className={stats && stats.betVolume >= bonus.requiredBetVolume ? 'text-green-400' : 'text-white'}>
@@ -248,7 +250,7 @@ export default function BonusesPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Users size={16} className="text-purple-400"/>
-                      <span className="text-sm font-bold text-white">Referrals with Deposit</span>
+                      <span className="text-sm font-bold text-white">{t.bonus.referralsWithDeposit}</span>
                     </div>
                     <span className="text-sm font-bold">
                       <span className={stats && stats.referredWithDeposit >= bonus.requiredReferrals ? 'text-green-400' : 'text-white'}>
@@ -281,15 +283,15 @@ export default function BonusesPage() {
                   {claiming ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                      Claiming...
+                      {t.bonus.claiming}
                     </>
                   ) : canClaim ? (
                     <>
-                      <Gift size={20}/> Claim ${bonus.bonusAmount.toFixed(2)} Bonus
+                      <Gift size={20}/> {t.bonus.claimBonus} ${bonus.bonusAmount.toFixed(2)}
                     </>
                   ) : (
                     <>
-                      <Lock size={18}/> Requirements Not Met
+                      <Lock size={18}/> {t.bonus.requirementsNotMet}
                     </>
                   )}
                 </button>
@@ -313,7 +315,7 @@ export default function BonusesPage() {
           >
             <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <Sparkles size={16} className="text-yellow-400"/>
-              Bonus Tiers
+              {t.bonus.bonusTiers}
             </h4>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-white/5 rounded-lg p-2.5">
@@ -363,59 +365,59 @@ export default function BonusesPage() {
       >
         <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
           <HelpCircle size={20} className="text-yellow-400"/>
-          Bonus FAQ
+          {t.bonus.faqTitle}
         </h3>
 
         <div className="space-y-4">
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>How do I get the welcome bonus?</span>
+              <span>{t.bonus.faq1Question}</span>
               <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
             </summary>
             <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              Make your first deposit of $100 or more. The bonus percentage depends on the amount: $100+ = 20%, $200+ = 30%, $500+ = 40%, $1000+ = 50%.
+              {t.bonus.faq1Answer}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>What are the requirements to claim?</span>
+              <span>{t.bonus.faq2Question}</span>
               <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
             </summary>
             <div className="mt-2 text-xs text-gray-400 leading-relaxed space-y-2">
-              <p>• Place bets totaling $30 or more</p>
-              <p>• Invite 3 friends who make a deposit</p>
-              <p>• Both requirements must be met within 30 days</p>
+              <p>• {t.bonus.faq2Answer1}</p>
+              <p>• {t.bonus.faq2Answer2}</p>
+              <p>• {t.bonus.faq2Answer3}</p>
             </div>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>How does the referral requirement work?</span>
+              <span>{t.bonus.faq3Question}</span>
               <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
             </summary>
             <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              Share your unique referral link with friends. When 3 of your referrals make their first deposit, this requirement is fulfilled. You can find your referral link in the Referrals page.
+              {t.bonus.faq3Answer}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>How long do I have to claim?</span>
+              <span>{t.bonus.faq4Question}</span>
               <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
             </summary>
             <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              Your welcome bonus expires after 30 days if not claimed. Make sure to meet the requirements and claim before it expires!
+              {t.bonus.faq4Answer}
             </p>
           </details>
 
           <details className="group">
             <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
-              <span>Can I have multiple bonuses?</span>
+              <span>{t.bonus.faq5Question}</span>
               <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
             </summary>
             <p className="mt-2 text-xs text-gray-400 leading-relaxed">
-              The welcome bonus is a one-time offer for new users making their first deposit. Only one welcome bonus can be claimed per account.
+              {t.bonus.faq5Answer}
             </p>
           </details>
         </div>

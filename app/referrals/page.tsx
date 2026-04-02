@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Users, Copy, Gift, CheckCircle2, Loader2, UserPlus, DollarSign } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function ReferralsPage() {
+  const { t } = useLanguage();
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [refCode,    setRefCode]    = useState<string|null>(null);
@@ -49,7 +51,7 @@ export default function ReferralsPage() {
     <Layout>
       <div className="space-y-5">
         <h1 className="text-xl font-black flex items-center gap-2 uppercase tracking-wider">
-          <Users className="text-accent" size={20}/> Referrals
+          <Users className="text-accent" size={20}/> {t.referral.title}
         </h1>
 
         {/* Stats */}
@@ -57,17 +59,17 @@ export default function ReferralsPage() {
           <div className="bg-surface rounded-2xl border border-white/8 p-3 text-center">
             <UserPlus size={16} className="text-primary mx-auto mb-1"/>
             <p className="text-2xl font-black">{loading ? '—' : stats.referredUsers}</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">Registered</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{t.referral.totalReferrals}</p>
           </div>
           <div className="bg-surface rounded-2xl border border-white/8 p-3 text-center">
             <DollarSign size={16} className="text-accent mx-auto mb-1"/>
             <p className="text-2xl font-black">{loading ? '—' : stats.referralTxCount}</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">Deposits</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{t.referral.deposited}</p>
           </div>
           <div className="bg-surface rounded-2xl border border-white/8 p-3 text-center">
             <Gift size={16} className="text-green-400 mx-auto mb-1"/>
             <p className="text-2xl font-black text-green-400">{loading ? '—' : stats.totalEarned.toFixed(2)}</p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">USDT Earned</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{t.referral.earnings}</p>
           </div>
         </div>
 
@@ -89,30 +91,30 @@ export default function ReferralsPage() {
             <>
               {/* Code row */}
               <div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">Your Code</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">{t.referral.yourCode}</p>
                 <div className="flex items-center gap-2 bg-background border border-white/8 rounded-xl px-4 py-3">
                   <span className="font-mono font-black text-2xl text-primary flex-1 select-all tracking-widest">{refCode}</span>
                   <button onClick={copyCode}
                     className="shrink-0 bg-surface border border-white/8 px-3 py-2 rounded-lg text-xs font-black hover:bg-white/5 transition-colors flex items-center gap-1.5 min-w-[90px] justify-center"
                   >
                     {copiedCode
-                      ? <><CheckCircle2 size={12} className="text-green-400"/> <span className="text-green-400">Copied!</span></>
-                      : <><Copy size={12}/> Copy Code</>}
+                      ? <><CheckCircle2 size={12} className="text-green-400"/> <span className="text-green-400">{t.referral.copied}</span></>
+                      : <><Copy size={12}/> {t.referral.copyCode}</>}
                   </button>
                 </div>
               </div>
 
               {/* Link row */}
               <div>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">Invite Link</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">{t.referral.yourLink}</p>
                 <div className="flex items-center gap-2 bg-background border border-white/8 rounded-xl px-4 py-3">
                   <span className="text-xs text-gray-400 flex-1 truncate font-medium select-all">{referralLink}</span>
                   <button onClick={copyLink}
                     className="shrink-0 bg-surface border border-white/8 px-3 py-2 rounded-lg text-xs font-black hover:bg-white/5 transition-colors flex items-center gap-1.5 min-w-[90px] justify-center"
                   >
                     {copiedLink
-                      ? <><CheckCircle2 size={12} className="text-green-400"/> <span className="text-green-400">Copied!</span></>
-                      : <><Copy size={12}/> Copy Link</>}
+                      ? <><CheckCircle2 size={12} className="text-green-400"/> <span className="text-green-400">{t.referral.copied}</span></>
+                      : <><Copy size={12}/> {t.referral.copyLink}</>}
                   </button>
                 </div>
               </div>
@@ -126,11 +128,11 @@ export default function ReferralsPage() {
 
         {/* How it works */}
         <div className="space-y-2">
-          <p className="text-xs font-black uppercase tracking-wider text-gray-500">How it works</p>
+          <p className="text-xs font-black uppercase tracking-wider text-gray-500">{t.referral.howItWorks}</p>
           {[
-            { n:1, title:'Share your code or link', desc:'Send BP-XXXXXX or your invite link to friends.' },
-            { n:2, title:'They register with your code', desc:'Their account gets linked to yours instantly.' },
-            { n:3, title:'They deposit — you earn', desc:'5% bonus per deposit, 30% on deposits of 100+ USDT. Credited instantly.' },
+            { n:1, title: t.referral.step1Title, desc: t.referral.step1Desc },
+            { n:2, title: t.referral.step2Title, desc: t.referral.step2Desc },
+            { n:3, title: t.referral.step3Title, desc: t.referral.step3Desc },
           ].map(s => (
             <div key={s.n} className="flex items-start gap-3 bg-surface rounded-2xl border border-white/8 p-4">
               <div className="w-7 h-7 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center font-black text-accent text-xs shrink-0">{s.n}</div>

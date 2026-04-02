@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/Layout';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Shield, Check, X, Plus, RefreshCw, Trophy,
   ChevronDown, ChevronUp, Trash2, CheckCircle2,
@@ -107,6 +108,7 @@ const SETTINGS_DEFAULTS: HouseSettings = {
 };
 
 export default function AdminPage() {
+  const { t } = useLanguage();
   const [matches,       setMatches]       = useState<Match[]>([]);
   const [exposure,      setExposure]      = useState<ExposureMatch[]>([]);
   const [totalExposure, setTotalExposure] = useState(0);
@@ -490,16 +492,16 @@ export default function AdminPage() {
 
   const buildTabs = (): { key: ActiveTab; label: string; icon: any; badge?: number }[] => {
     const all: { key: ActiveTab; label: string; icon: any; badge?: number }[] = [
-      { key: 'dashboard',    label: 'Dashboard', icon: TrendingUp                                           },
-      { key: 'matches',      label: 'Matches',  icon: Trophy                                             },
-      { key: 'exposure',     label: 'Exposure', icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
-      { key: 'settings',     label: 'Limits',   icon: Settings                                           },
-      { key: 'withdrawals',  label: 'Withdrawals', icon: DollarSign, badge: pendingWdraw || undefined     },
+      { key: 'dashboard',    label: t.admin.dashboard, icon: TrendingUp                                           },
+      { key: 'matches',      label: t.admin.matches,  icon: Trophy                                             },
+      { key: 'exposure',     label: t.admin.exposure, icon: BarChart2, badge: totalExposure > 0 ? Math.round(totalExposure) : undefined },
+      { key: 'settings',     label: t.admin.settings,   icon: Settings                                           },
+      { key: 'withdrawals',  label: t.admin.withdrawals, icon: DollarSign, badge: pendingWdraw || undefined     },
       { key: 'rub',          label: 'RUB ₽',    icon: CreditCard, badge: pendingRub   || undefined       },
-      { key: 'support',      label: 'Support',  icon: MessageSquare, badge: openTicketCount || undefined   },
-      { key: 'users',        label: 'Users',    icon: Shield                                              },
-      { key: 'notifications',label: 'Broadcast',icon: Bell                                                },
-      { key: 'applications', label: 'Jobs',     icon: Briefcase,  badge: pendingApps  || undefined       },
+      { key: 'support',      label: t.nav.support,  icon: MessageSquare, badge: openTicketCount || undefined   },
+      { key: 'users',        label: t.admin.users,    icon: Shield                                              },
+      { key: 'notifications',label: t.admin.notifications,icon: Bell                                                },
+      { key: 'applications', label: t.admin.applications,     icon: Briefcase,  badge: pendingApps  || undefined       },
     ];
     if (currentRole === 'admin')  return all;
     if (currentRole === 'mod')       return all.filter(t => ['withdrawals','rub','support'].includes(t.key));
@@ -511,7 +513,7 @@ export default function AdminPage() {
   return (
     <Layout>
       <div className="space-y-4">
-        <h1 className="text-xl font-black flex items-center gap-2"><Shield size={18} className="text-accent" /> Admin</h1>
+        <h1 className="text-xl font-black flex items-center gap-2"><Shield size={18} className="text-accent" /> {t.admin.title}</h1>
 
         {feedback && (
           <div className={`rounded-xl px-4 py-3 text-sm font-medium border ${
@@ -602,7 +604,7 @@ export default function AdminPage() {
                   <div className="bg-surface border border-white/8 rounded-2xl p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Users size={14} className="text-blue-400"/>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Users</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">{t.admin.totalUsers}</span>
                     </div>
                     <p className="text-2xl font-black text-white">{stats.users.total}</p>
                     <p className="text-[9px] text-gray-500">{stats.users.withBalance} with balance</p>
@@ -663,11 +665,11 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <div className="text-center">
                       <p className="text-xl font-black text-white">{stats.bets.total}</p>
-                      <p className="text-[9px] text-gray-500 uppercase">Total</p>
+                      <p className="text-[9px] text-gray-500 uppercase">{t.admin.totalBets}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-black text-yellow-400">{stats.bets.pending}</p>
-                      <p className="text-[9px] text-gray-500 uppercase">Pending</p>
+                      <p className="text-[9px] text-gray-500 uppercase">{t.admin.pending}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-black text-green-400">{stats.bets.won}</p>
@@ -870,7 +872,7 @@ export default function AdminPage() {
                   className="bg-accent text-white px-4 py-2.5 rounded-xl font-black text-sm uppercase hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
                 >
                   {importing ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <RefreshCw size={14} />}
-                  Import
+                  {t.admin.import}
                 </button>
               </div>
               {importMsg && <p className="text-xs text-gray-500">{importMsg}</p>}
@@ -921,7 +923,7 @@ export default function AdminPage() {
                           <button onClick={() => setSettlingId(settlingId === match._id ? null : match._id)}
                             className="flex-1 bg-primary/10 text-primary border border-primary/20 text-xs font-black py-2 rounded-xl flex items-center justify-center gap-1 hover:bg-primary/20"
                           >
-                            <CheckCircle2 size={12} /> Settle {settlingId === match._id ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                            <CheckCircle2 size={12} /> {t.admin.settle} {settlingId === match._id ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
                           </button>
                         )}
                         <button onClick={() => deleteMatch(match._id)} className="bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-xl hover:bg-red-500/20">
@@ -1776,10 +1778,10 @@ export default function AdminPage() {
                         <div className="flex gap-2">
                           <button onClick={() => handleApplication(app._id, 'approved')}
                             className="flex-1 bg-green-500/10 text-green-400 border border-green-500/20 py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-green-500/20 text-sm font-black uppercase"
-                          ><Check size={14} /> Approve</button>
+                          ><Check size={14} /> {t.admin.approved}</button>
                           <button onClick={() => handleApplication(app._id, 'rejected')}
                             className="flex-1 bg-surface border border-white/8 text-gray-400 py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-white/5 text-sm font-black uppercase"
-                          ><X size={14} /> Reject</button>
+                          ><X size={14} /> {t.admin.rejected}</button>
                         </div>
                       )}
                     </div>

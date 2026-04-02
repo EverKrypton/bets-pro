@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 import { motion } from 'framer-motion';
 import { HelpCircle, ChevronDown, Gift, Wallet, Users, Trophy, Shield, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const faqData = [
   {
@@ -120,6 +121,7 @@ const faqData = [
 
 export default function FAQPage() {
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+  const { t } = useLanguage();
 
   const toggleItem = (key: string) => {
     setOpenItems(prev => {
@@ -130,14 +132,23 @@ export default function FAQPage() {
     });
   };
 
+  const categoryNames: Record<string, string> = {
+    'Getting Started': t.faq.gettingStarted,
+    'WelcomeBonus': t.faq.welcomeBonus,
+    'Withdrawals': t.faq.withdrawals,
+    'Referrals': t.faq.referrals,
+    'Betting': t.faq.betting,
+    'Security': t.faq.security,
+  };
+
   return (
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-black text-white mb-1 flex items-center gap-2">
           <HelpCircle size={24} className="text-yellow-400"/>
-          FAQ
+          {t.faq.title}
         </h1>
-        <p className="text-sm text-gray-500">Frequently asked questions</p>
+        <p className="text-sm text-gray-500">{t.faq.subtitle}</p>
       </div>
 
       <div className="space-y-6">
@@ -151,7 +162,7 @@ export default function FAQPage() {
           >
             <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3">
               <category.icon size={20} className={category.color}/>
-              <h2 className="font-black text-white">{category.category}</h2>
+              <h2 className="font-black text-white">{categoryNames[category.category] || category.category}</h2>
             </div>
             <div className="divide-y divide-white/5">
               {category.questions.map((item, qIdx) => {
@@ -192,7 +203,7 @@ export default function FAQPage() {
       >
         <div className="flex items-center gap-3 mb-3">
           <Clock size={20} className="text-yellow-400"/>
-          <h3 className="font-black text-white">Still need help?</h3>
+          <h3 className="font-black text-white">{t.faq.stillNeedHelp}</h3>
         </div>
         <p className="text-sm text-gray-400 mb-3">
           If you couldn't find an answer to your question, contact our support team.
@@ -201,7 +212,7 @@ export default function FAQPage() {
           href="/support"
           className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-xl text-sm font-bold hover:bg-yellow-500/30 transition-colors"
         >
-          Contact Support
+          {t.faq.contactSupport}
         </a>
       </motion.div>
     </Layout>

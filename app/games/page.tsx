@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { Clock, X, ChevronDown, ChevronUp, Info, Lock, TrendingDown, Zap, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Odds  { home: number; draw: number; away: number; }
 interface GoalOdds {
@@ -133,6 +134,7 @@ function LiveScore({ live }: { live: LiveEvent }) {
 }
 
 export default function InversePage() {
+  const { t } = useLanguage();
   const [matches,      setMatches]      = useState<Match[]>([]);
   const [liveMap,      setLiveMap]      = useState<Record<string,LiveEvent>>({});
   const [prevScores,   setPrevScores]   = useState<Record<string,string>>({});
@@ -262,8 +264,8 @@ export default function InversePage() {
       <div className="flex items-center gap-2 mb-2">
         <TrendingDown className="text-yellow-500" size={20}/>
         <div>
-          <h1 className="font-black text-lg leading-none">Inverse Betting</h1>
-          <p className="text-[10px] text-gray-500 font-bold mt-0.5">Bet AGAINST outcomes — win when they lose</p>
+          <h1 className="font-black text-lg leading-none">{t.games.title}</h1>
+          <p className="text-[10px] text-gray-500 font-bold mt-0.5">{t.games.subtitle} — {t.games.description}</p>
         </div>
       </div>
 
@@ -360,7 +362,7 @@ export default function InversePage() {
         className="w-full flex items-center justify-between bg-surface border border-yellow-500/20 rounded-xl px-4 py-2.5 mb-3 text-sm font-black text-gray-400 hover:text-white transition-colors"
       >
         <span>
-          My Inverse Bets
+          {t.games.yourBets}
           {myBets.length>0 && <span className="ml-2 bg-yellow-500 text-black text-[10px] font-black px-1.5 py-0.5 rounded-full">{myBets.length}</span>}
         </span>
         {showBets ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
@@ -403,7 +405,7 @@ export default function InversePage() {
               <div className="flex items-start justify-between px-4 py-3 bg-yellow-500/10 border-b border-yellow-500/20">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">Inverse Bet</p>
+                    <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">{t.games.betAgainst}</p>
                     <TrendingDown size={10} className="text-yellow-400"/>
                   </div>
                   <p className="font-black text-sm text-white truncate">{slip.homeTeam} vs {slip.awayTeam}</p>
@@ -436,7 +438,7 @@ export default function InversePage() {
                   >Max</button>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Potential win</span>
+                  <span className="text-xs text-gray-500">{t.sports.potentialWin}</span>
                   <span className={`font-black text-xl ${potWin ? 'text-green-400' : 'text-gray-700'}`}>
                     {potWin ? `${potWin} USDT` : '—'}
                   </span>
@@ -450,8 +452,8 @@ export default function InversePage() {
                   className="w-full py-4 rounded-xl bg-yellow-500 text-black font-black text-base uppercase tracking-wider hover:bg-yellow-400 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {placing
-                    ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"/>Placing...</span>
-                    : 'Place Inverse Bet'}
+                    ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"/>{t.common.loading}</span>
+                    : t.sports.placeBet}
                 </button>
               </div>
             </div>
