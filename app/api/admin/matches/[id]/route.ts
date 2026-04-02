@@ -50,17 +50,14 @@ function isBetWinner(bet: typeof Bet.prototype, result: string, hScore: number, 
   const isGoalBet = GOAL_SELECTIONS.includes(bet.selection);
   const isInverse = bet.isInverse === true;
 
+  let wins = false;
   if (isResultBet) {
-    if (isInverse) {
-      return INVERSE_WINS[result].includes(bet.selection);
-    }
-    return WINS[result].includes(bet.selection);
+    wins = isInverse ? INVERSE_WINS[result].includes(bet.selection) : WINS[result].includes(bet.selection);
+  } else if (isGoalBet) {
+    wins = checkGoalBet(bet.selection, hScore, aScore);
+    if (isInverse) wins = !wins;
   }
-  if (isGoalBet) {
-    const wins = checkGoalBet(bet.selection, hScore, aScore);
-    return isInverse ? !wins : wins;
-  }
-  return false;
+  return wins;
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -132,11 +129,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const allBets = await Bet.find({ matchId: id, status: { $in: ['open', 'matched', 'pending'] } });
 
+    const winners: typeof Bet.prototype[] = [];
+    const losers: typeof Bet.prototype[] = [];
     const processedBets = new Set<string>();
-    let matchedSettled = 0;
-    let openSettled = 0;
-    let totalHouseProfit = 0;
-    const results: { betId: string; status: string; payout: number }[] = [];
 
     for (const bet of allBets) {
       if (processedBets.has(bet._id.toString())) continue;
@@ -145,114 +140,76 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (bet.status === 'matched' && bet.pairedWith) {
         const pairedBet = allBets.find(b => b._id.toString() === (bet.pairedWith as any).toString());
-        
-        if (!pairedBet) {
-          console.error(`Paired bet not found for ${bet._id}`);
-          continue;
-        }
-
-        if (processedBets.has(pairedBet._id.toString())) continue;
+        if (!pairedBet || processedBets.has(pairedBet._id.toString())) continue;
 
         processedBets.add(bet._id.toString());
         processedBets.add(pairedBet._id.toString());
 
         const pairedIsWinner = isBetWinner(pairedBet, result, hScore, aScore);
 
-        const betAmount = bet.pairedAmount || Math.min(bet.amount, pairedBet.amount);
-        const totalPool = betAmount * 2;
-        const houseTake = totalPool * HOUSE_EDGE;
-        const payoutToWinner = totalPool - houseTake;
-
         if (isWinner && !pairedIsWinner) {
-          const winnerUser = await User.findById(bet.userId);
-          if (winnerUser) {
-            winnerUser.balance = parseFloat((winnerUser.balance + payoutToWinner).toFixed(6));
-            await winnerUser.save();
-          }
-          bet.status = 'won';
-          bet.result = 'won';
-          bet.payout = payoutToWinner;
-          await bet.save();
-
-          pairedBet.status = 'lost';
-          pairedBet.result = 'lost';
-          pairedBet.payout = 0;
-          await pairedBet.save();
-
-          totalHouseProfit += houseTake;
-          matchedSettled++;
+          winners.push(bet);
+          losers.push(pairedBet);
         } else if (!isWinner && pairedIsWinner) {
-          const winnerUser = await User.findById(pairedBet.userId);
-          if (winnerUser) {
-            winnerUser.balance = parseFloat((winnerUser.balance + payoutToWinner).toFixed(6));
-            await winnerUser.save();
-          }
-          bet.status = 'lost';
-          bet.result = 'lost';
-          bet.payout = 0;
+          winners.push(pairedBet);
+          losers.push(bet);
+        } else {
+          bet.status = 'refunded';
+          bet.payout = bet.pairedAmount || bet.amount;
           await bet.save();
-
-          pairedBet.status = 'won';
-          pairedBet.result = 'won';
-          pairedBet.payout = payoutToWinner;
+          pairedBet.status = 'refunded';
+          pairedBet.payout = pairedBet.pairedAmount || pairedBet.amount;
           await pairedBet.save();
 
-          totalHouseProfit += houseTake;
-          matchedSettled++;
-        } else {
-          const refundAmount = betAmount * (1 - HOUSE_EDGE);
-          
           const user1 = await User.findById(bet.userId);
+          const user2 = await User.findById(pairedBet.userId);
           if (user1) {
-            user1.balance = parseFloat((user1.balance + refundAmount).toFixed(6));
+            user1.balance = parseFloat((user1.balance + (bet.pairedAmount || bet.amount)).toFixed(6));
             await user1.save();
           }
-          bet.status = 'refunded';
-          bet.result = null;
-          bet.payout = refundAmount;
-          await bet.save();
-
-          const user2 = await User.findById(pairedBet.userId);
           if (user2) {
-            user2.balance = parseFloat((user2.balance + refundAmount).toFixed(6));
+            user2.balance = parseFloat((user2.balance + (pairedBet.pairedAmount || pairedBet.amount)).toFixed(6));
             await user2.save();
           }
-          pairedBet.status = 'refunded';
-          pairedBet.result = null;
-          pairedBet.payout = refundAmount;
-          await pairedBet.save();
-
-          totalHouseProfit += houseTake;
-          matchedSettled++;
         }
-
-      } else if (bet.status === 'open' || bet.status === 'pending') {
+      } else {
         processedBets.add(bet._id.toString());
-
         if (isWinner) {
-          const payout = parseFloat((bet.amount * bet.odds * (1 - HOUSE_EDGE)).toFixed(6));
-          
-          const user = await User.findById(bet.userId);
-          if (user) {
-            user.balance = parseFloat((user.balance + payout).toFixed(6));
-            await user.save();
-          }
-          bet.status = 'won';
-          bet.result = 'won';
-          bet.payout = payout;
-          await bet.save();
-
-          const houseRevenue = payout - bet.amount;
-          totalHouseProfit += houseRevenue;
+          winners.push(bet);
         } else {
-          bet.status = 'lost';
-          bet.result = 'lost';
-          bet.payout = 0;
-          await bet.save();
-
-          totalHouseProfit += bet.amount;
+          losers.push(bet);
         }
-        openSettled++;
+      }
+    }
+
+    const totalLoserPool = losers.reduce((sum, b) => sum + b.amount, 0);
+    const totalWinnerPool = winners.reduce((sum, b) => sum + b.amount, 0);
+    const totalPool = totalLoserPool + totalWinnerPool;
+    const afterHouseEdge = totalPool * (1 - HOUSE_EDGE);
+    const houseProfit = totalPool * HOUSE_EDGE;
+
+    const userPayouts = new Map<string, number>();
+
+    for (const winner of winners) {
+      const weight = winner.amount / totalWinnerPool;
+      const payout = parseFloat((afterHouseEdge * weight).toFixed(6));
+      userPayouts.set(winner.userId.toString(), (userPayouts.get(winner.userId.toString()) || 0) + payout);
+      winner.status = 'won';
+      winner.payout = payout;
+      await winner.save();
+    }
+
+    for (const loser of losers) {
+      loser.status = 'lost';
+      loser.payout = 0;
+      await loser.save();
+    }
+
+    for (const [userId, payout] of userPayouts) {
+      const user = await User.findById(userId);
+      if (user) {
+        user.balance = parseFloat((user.balance + payout).toFixed(6));
+        await user.save();
       }
     }
 
@@ -263,12 +220,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await match.save();
 
     return NextResponse.json({
-      message: `Settled: ${result} (${hScore}-${aScore}) | House profit: ${totalHouseProfit.toFixed(2)} USDT`,
+      message: `Settled: ${result} (${hScore}-${aScore}) | House profit: ${houseProfit.toFixed(2)} USDT`,
       match,
-      matchedSettled,
-      openSettled,
-      totalBets: allBets.length,
-      houseProfit: parseFloat(totalHouseProfit.toFixed(6)),
+      winnersCount: winners.length,
+      losersCount: losers.length,
+      totalPool: parseFloat(totalPool.toFixed(6)),
+      houseProfit: parseFloat(houseProfit.toFixed(6)),
+      payoutToWinners: parseFloat(afterHouseEdge.toFixed(6)),
     });
   } catch (error: unknown) {
     console.error('Settle error:', error);

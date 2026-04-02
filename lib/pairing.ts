@@ -4,18 +4,9 @@ import mongoose from 'mongoose';
 const HOUSE_EDGE = 0.10;
 
 const OPPOSITE_SELECTIONS: Record<string, string[]> = {
-  home: ['away', 'draw'],
-  away: ['home', 'draw'],
-  draw: ['home', 'away'],
-  '1x': ['away'],
-  'x2': ['home'],
-  '12': ['draw'],
-};
-
-const INVERSE_BET_OPPOSITES: Record<string, string[]> = {
-  home: ['away', 'draw'],
-  away: ['home', 'draw'],
-  draw: ['home', 'away'],
+  home: ['away', 'draw', 'x2'],
+  away: ['home', 'draw', '1x'],
+  draw: ['home', 'away', '12'],
   '1x': ['away'],
   'x2': ['home'],
   '12': ['draw'],
@@ -35,9 +26,7 @@ export async function findCounterBet(
   isInverse: boolean,
   excludeUserId: mongoose.Types.ObjectId
 ): Promise<PairingResult> {
-  const oppositeSelections = isInverse 
-    ? INVERSE_BET_OPPOSITES[selection] || []
-    : OPPOSITE_SELECTIONS[selection] || [];
+  const oppositeSelections = OPPOSITE_SELECTIONS[selection] || [];
 
   if (!oppositeSelections.length) {
     return { matched: false };
@@ -47,21 +36,17 @@ export async function findCounterBet(
     matchId,
     selection: { $in: oppositeSelections },
     status: 'open',
-    isInverse: false,
     userId: { $ne: excludeUserId },
-    amount: { $gte: amount * 0.5, $lte: amount * 2 },
   }).sort({ createdAt: 1 });
 
   if (!counterBet) {
     return { matched: false };
   }
 
-  const pairedAmount = Math.min(amount, counterBet.amount);
-
   return {
     matched: true,
     pairedWith: counterBet._id,
-    pairedAmount,
+    pairedAmount: Math.min(amount, counterBet.amount),
     counterBetId: counterBet._id,
   };
 }
@@ -134,4 +119,4 @@ export async function getUnpairedBets(matchId: mongoose.Types.ObjectId): Promise
   }).sort({ createdAt: 1 });
 }
 
-export { HOUSE_EDGE, OPPOSITE_SELECTIONS, INVERSE_BET_OPPOSITES };
+export { HOUSE_EDGE, OPPOSITE_SELECTIONS };
