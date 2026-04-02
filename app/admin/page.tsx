@@ -278,14 +278,37 @@ export default function AdminPage() {
 
   const saveOdds = async (matchId: string) => {
     const home = parseFloat(oddsForm.home), draw = parseFloat(oddsForm.draw), away = parseFloat(oddsForm.away);
+    
+    // Validation: all odds must be >= 1.01
     if ([home,draw,away].some(o => isNaN(o) || o < 1.01)) { notify('All odds must be >= 1.01', false); return; }
+    
+    // Validation: maximum odds is 3.2
+    if ([home,draw,away].some(o => o > 3.2)) { notify('Maximum odds is 3.2', false); return; }
+    
+    // Validation: no two odds can be equal
+    if (home === draw || home === away || draw === away) { notify('All odds must be different', false); return; }
     
     // Build goal odds object
     const goalOdds: Record<string, number> = {};
+    const goalValues: number[] = [];
     Object.entries(goalOddsForm).forEach(([key, val]) => {
       const num = parseFloat(val);
-      if (!isNaN(num) && num >= 1.01) goalOdds[key] = num;
+      if (!isNaN(num) && num >= 1.01) {
+        if (num > 3.2) { notify(`Goal odds ${key} exceeds maximum 3.2`, false); return; }
+        goalOdds[key] = num;
+        goalValues.push(num);
+      }
     });
+    
+    // Validate goal odds are unique
+    const uniqueGoalOdds = new Set(goalValues);
+    if (uniqueGoalOdds.size !== goalValues.length) { notify('All goal odds must be different', false); return; }
+    
+    // Validate goal odds don't match main odds
+    if (goalValues.some(g => g === home || g === draw || g === away)) { 
+      notify('Goal odds must be different from main odds', false); 
+      return; 
+    }
     
     const res  = await fetch(`/api/admin/matches/${matchId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -297,23 +320,55 @@ export default function AdminPage() {
   };
 
   // Calculate distributed odds from a single input (fair odds range)
+  // All odds must be unique, min 1.01, max 3.2
   const calcQuickOdds = (base: number) => {
     if (!base || base < 1.1) return;
-    // Use realistic probability distribution with slight variation
-    const bookMargin = 0.05; // 5% bookmaker margin
-    const homeProb = 0.45 + (Math.random() * 0.15); // Home wins 45-60%
-    const drawProb = 0.22 + (Math.random() * 0.10); // Draw 22-32%
-    const awayProb = 1 - homeProb - drawProb; // Away gets remainder
+    if (base > 3.2) { notify('Maximum base odds is 3.2', false); return; }
     
-    const home = Math.round((1 / (homeProb * (1 + bookMargin))) * 100) / 100;
-    const draw = Math.round((1 / (drawProb * (1 + bookMargin))) * 100) / 100;
-    const away = Math.round((1 / (awayProb * (1 + bookMargin))) * 100) / 100;
+    // Generate unique odds with realistic probability distribution
+    const MAX_ODDS = 3.2;
+    const MIN_ODDS = 1.01;
     
-    // Scale to approximately match the base value
-    const scale = base / ((home + draw + away) / 3);
-    const finalHome = Math.max(1.01, Math.round(home / scale * 100) / 100);
-    const finalDraw = Math.max(1.01, Math.round(draw / scale * 100) / 100);
-    const finalAway = Math.max(1.01, Math.round(away / scale * 100) / 100);
+    // Start with realistic probability ranges
+    let homeProb = 0.35 + (Math.random() * 0.30); // 35-65%
+    let drawProb = 0.20 + (Math.random() * 0.15); // 20-35%
+    let awayProb = 1 - homeProb - drawProb;
+    
+    // Ensure away probability is valid
+    if (awayProb < 0.10) {
+      awayProb = 0.10 + (Math.random() * 0.20);
+      homeProb = 1 - drawProb - awayProb;
+    }
+    
+    // Apply bookmaker margin
+    const bookMargin = 0.08;
+    let homeOdds = Math.round((1 / (homeProb * (1 + bookMargin))) * 100) / 100;
+    let drawOdds = Math.round((1 / (drawProb * (1 + bookMargin))) * 100) / 100;
+    let awayOdds = Math.round((1 / (awayProb * (1 + bookMargin))) * 100) / 100;
+    
+    // Clamp to min/max
+    homeOdds = Math.max(MIN_ODDS, Math.min(MAX_ODDS, homeOdds));
+    drawOdds = Math.max(MIN_ODDS, Math.min(MAX_ODDS, drawOdds));
+    awayOdds = Math.max(MIN_ODDS, Math.min(MAX_ODDS, awayOdds));
+    
+    // Ensure all odds are unique
+    const makeUnique = (odds: number[], targetAvg: number): number[] => {
+      let [h, d, a] = odds;
+      
+      // If any are equal, adjust slightly
+      if (h === d) d = Math.min(MAX_ODDS, Math.max(MIN_ODDS, d + 0.02));
+      if (h === a) a = Math.min(MAX_ODDS, Math.max(MIN_ODDS, a + (Math.random() > 0.5 ? 0.03 : -0.03)));
+      if (d === a) a = Math.min(MAX_ODDS, Math.max(MIN_ODDS, a + 0.02));
+      
+      // Round to 2 decimals
+      h = Math.round(h * 100) / 100;
+      d = Math.round(d * 100) / 100;
+      a = Math.round(a * 100) / 100;
+      
+      return [h, d, a];
+    };
+    
+    let [finalHome, finalDraw, finalAway] = makeUnique([homeOdds, drawOdds, awayOdds], base);
     
     setOddsForm(f => ({ ...f, home: finalHome.toFixed(2), draw: finalDraw.toFixed(2), away: finalAway.toFixed(2) }));
   };

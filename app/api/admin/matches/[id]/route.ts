@@ -66,12 +66,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return NextResponse.json({ error: 'odds must include numeric home, draw and away' }, { status: 400 });
       if ([odds.home, odds.draw, odds.away].some(o => o < 1.01))
         return NextResponse.json({ error: 'All odds must be >= 1.01' }, { status: 400 });
+      if ([odds.home, odds.draw, odds.away].some(o => o > 3.2))
+        return NextResponse.json({ error: 'Maximum odds is 3.2' }, { status: 400 });
+      if (odds.home === odds.draw || odds.home === odds.away || odds.draw === odds.away)
+        return NextResponse.json({ error: 'All odds must be different' }, { status: 400 });
       update.trueOdds    = odds;
       update.displayOdds = odds;
       update.marginPct   = 0;
     }
 
     if (goalOdds) {
+      const goalValues = Object.values(goalOdds) as number[];
+      if (goalValues.some(o => typeof o !== 'number' || o < 1.01))
+        return NextResponse.json({ error: 'All goal odds must be >= 1.01' }, { status: 400 });
+      if (goalValues.some(o => o > 3.2))
+        return NextResponse.json({ error: 'Maximum goal odds is 3.2' }, { status: 400 });
+      const uniqueGoalOdds = new Set(goalValues);
+      if (uniqueGoalOdds.size !== goalValues.length)
+        return NextResponse.json({ error: 'All goal odds must be different' }, { status: 400 });
       update.goalOdds = goalOdds;
     }
 
