@@ -526,55 +526,58 @@ className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold trans
 
                       {/* Teams + Score */}
                       <div className="px-4 pb-3">
-                        <div className="flex items-center justify-between gap-2">
-                          {/* Home Team + Score */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge url={match.homeBadge} name={match.homeTeam} size={28}/>
-                              <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
-                            </div>
-                            {live ? (
-                              <motion.div
+                        {/* Team names row */}
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex-1 flex items-center gap-2 min-w-0">
+                            <Badge url={match.homeBadge} name={match.homeTeam} size={24}/>
+                            <span className="font-bold text-sm text-white truncate">{match.homeTeam}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 font-bold shrink-0">vs</span>
+                          <div className="flex-1 flex items-center gap-2 min-w-0 justify-end">
+                            <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
+                            <Badge url={match.awayBadge} name={match.awayTeam} size={24}/>
+                          </div>
+                        </div>
+
+                        {/* Score row - centered and prominent */}
+                        <div className="flex items-center justify-center gap-4 py-2 bg-white/5 rounded-xl">
+                          {live ? (
+                            <>
+                              <motion.span
                                 key={live.homeScore}
-                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                animate={bumping ? { scale:[1,1.4,1] } : {}}
                                 transition={{ duration:0.4 }}
-                                className="text-2xl font-black text-white tabular-nums"
+                                className="text-3xl font-black text-white tabular-nums"
                               >
                                 {live.homeScore ?? '0'}
-                              </motion.div>
-                            ) : finished && match.result === 'home' ? (
-                              <div className="text-xl font-black text-green-400">WON</div>
-                            ) : (
-                              <div className="text-sm font-bold text-gray-500">-</div>
-                            )}
-                          </div>
-
-                          {/* VS Separator */}
-                          <div className="flex flex-col items-center px-2">
-                            <span className="text-xs text-gray-600 font-bold">VS</span>
-                          </div>
-
-                          {/* Away Team + Score */}
-                          <div className="flex-1 min-w-0 text-right">
-                            <div className="flex items-center gap-2 mb-2 justify-end">
-                              <span className="font-bold text-sm text-white truncate">{match.awayTeam}</span>
-                              <Badge url={match.awayBadge} name={match.awayTeam} size={28}/>
-                            </div>
-                            {live ? (
-                              <motion.div
+                              </motion.span>
+                              <span className="text-xl font-bold text-gray-500">-</span>
+                              <motion.span
                                 key={live.awayScore}
-                                animate={bumping ? { scale:[1,1.3,1] } : {}}
+                                animate={bumping ? { scale:[1,1.4,1] } : {}}
                                 transition={{ duration:0.4 }}
-                                className="text-2xl font-black text-white tabular-nums text-right"
+                                className="text-3xl font-black text-white tabular-nums"
                               >
                                 {live.awayScore ?? '0'}
-                              </motion.div>
-                            ) : finished && match.result === 'away' ? (
-                              <div className="text-xl font-black text-green-400">WON</div>
-                            ) : (
-                              <div className="text-sm font-bold text-gray-500 text-right">-</div>
-                            )}
-                          </div>
+                              </motion.span>
+                            </>
+                          ) : finished && match.result ? (
+                            <>
+                              <span className="text-3xl font-black text-white tabular-nums">
+                                {match.result === 'home' ? '1' : match.result === 'draw' ? 'X' : '2'}
+                              </span>
+                              <span className="text-xl font-bold text-gray-500">-</span>
+                              <span className="text-3xl font-black text-white tabular-nums">
+                                {match.result === 'home' ? '0' : match.result === 'draw' ? 'X' : '1'}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-2xl font-bold text-gray-600 tabular-nums">0</span>
+                              <span className="text-lg font-bold text-gray-600">-</span>
+                              <span className="text-2xl font-bold text-gray-600 tabular-nums">0</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
