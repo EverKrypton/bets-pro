@@ -5,6 +5,7 @@ import Bet                from '@/models/Bet';
 import Match              from '@/models/Match';
 import Settings           from '@/models/Settings';
 import User               from '@/models/User';
+import { matchBet, HOUSE_EDGE } from '@/lib/pairing';
 
 const RESULT_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
 const GOAL_MARKETS = [
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
-    // Load settings for limits
     const settings = await Settings.findOneAndUpdate(
       { key: 'global' },
       { $setOnInsert: { key: 'global' } },
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Odds not available for this selection' }, { status: 400 });
       }
     } else if (['1x', 'x2', '12'].includes(sel)) {
-      if (!match.displayOdds?.home ||!match.displayOdds?.draw || !match.displayOdds?.away) {
+      if (!match.displayOdds?.home || !match.displayOdds?.draw || !match.displayOdds?.away) {
         return NextResponse.json({ error: 'Odds not set for this match' }, { status: 400 });
       }
       odd = doubleChanceOdd(match.displayOdds, sel);
@@ -108,13 +108,16 @@ export async function POST(req: Request) {
     }
 
     const bet = await Bet.create({
-      userId:     user._id,
-      amount:     betAmount,
-      multiplier: odd,
-      payout:     0,
-      status:     'pending',
-      matchId:    match._id,
-      selection:  sel,
+      userId:      user._id,
+      amount:      betAmount,
+      odds:        odd,
+      multiplier:  odd,
+      payout:      0,
+      status:      'open',
+      matchId:     match._id,
+      selection:   sel,
+      isInverse:   false,
+      houseEdge:   HOUSE_EDGE,
       details: {
         matchId:        match._id,
         homeTeam:       match.homeTeam,
@@ -127,10 +130,26 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, bet, newBalance: updatedUser.balance, potentialPayout });
+    const pairingResult = await matchBet(
+      bet._id as any,
+      match._id,
+      sel,
+      betAmount,
+      false,
+      user._id
+    );
+
+    return NextResponse.json({ 
+      success: true, 
+      bet, 
+      newBalance: updatedUser.balance, 
+      potentialPayout,
+      matched: pairingResult.matched,
+      pairedWith: pairingResult.counterBetId,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Bet error:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500});
   }
 }

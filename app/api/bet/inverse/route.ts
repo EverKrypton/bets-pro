@@ -5,6 +5,7 @@ import Bet                from '@/models/Bet';
 import Match              from '@/models/Match';
 import Settings           from '@/models/Settings';
 import User               from '@/models/User';
+import { matchBet, HOUSE_EDGE } from '@/lib/pairing';
 
 const RESULT_MARKETS = ['home', 'draw', 'away', '1x', 'x2', '12'] as const;
 type Market = typeof RESULT_MARKETS[number];
@@ -133,12 +134,14 @@ export async function POST(req: Request) {
     const bet = await Bet.create({
       userId:      user._id,
       amount:      betAmount,
+      odds:        odd,
       multiplier:  odd,
       payout:      0,
-      status:      'pending',
+      status:      'open',
       matchId:     match._id,
       isInverse:   true,
       selection:   sel,
+      houseEdge:   HOUSE_EDGE,
       details: {
         matchId:        match._id,
         homeTeam:       match.homeTeam,
@@ -154,7 +157,23 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, bet, newBalance: updatedUser.balance, potentialPayout });
+    const pairingResult = await matchBet(
+      bet._id as any,
+      match._id,
+      sel,
+      betAmount,
+      true,
+      user._id
+    );
+
+    return NextResponse.json({ 
+      success: true, 
+      bet, 
+      newBalance: updatedUser.balance, 
+      potentialPayout,
+      matched: pairingResult.matched,
+      pairedWith: pairingResult.counterBetId,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Inverse bet error:', message);

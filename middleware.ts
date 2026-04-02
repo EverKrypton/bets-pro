@@ -10,6 +10,10 @@ const PUBLIC_PATHS = new Set([
   '/api/settings/public',
 ]);
 
+const SKIP_RATE_LIMIT = new Set([
+  '/api/webhook/oxapay',
+]);
+
 const RATE_LIMIT_MAP: Record<string, RateLimitType> = {
   '/api/auth/login': 'login',
   '/api/auth/register': 'register',
@@ -38,6 +42,18 @@ export function middleware(request: NextRequest) {
 
   const ip = getClientIP(request);
   const path = request.nextUrl.pathname;
+
+  if (SKIP_RATE_LIMIT.has(path)) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, hmac');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: response.headers });
+    }
+    return response;
+  }
 
   const rateLimitType = RATE_LIMIT_MAP[path] || 'default';
   const { allowed, remaining, resetTime, retryAfter } = checkRateLimit(ip, rateLimitType);
