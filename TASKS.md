@@ -2,6 +2,125 @@
 
 ## Completed Tasks
 
+### 2024-04-02: Security Hardening & Rate Limiting
+
+**Status: DONE**
+
+Implemented rate limiting and security headers for API protection.
+
+#### What was implemented:
+
+1. **Rate Limiting** (`lib/rateLimit.ts`)
+   - In-memory rate limiter with configurable limits
+   - Login: 5 req/min
+   - Register: 5 req/hour
+   - Bet: 30 req/min
+   - Withdraw: 5 req/hour
+   - Deposit: 10 req/hour
+   - Support: 10 req/hour
+   - Default: 60 req/min
+
+2. **Security Headers** (`middleware.ts`)
+   - X-Content-Type-Options: nosniff
+   - X-Frame-Options: DENY
+   - X-XSS-Protection: 1; mode=block
+   - Referrer-Policy: strict-origin-when-cross-origin
+   - Permissions-Policy: camera=(), microphone=(), geolocation=()
+   - Strict CORS: 'self' only
+
+3. **Rate Limit Response Headers**
+   - X-RateLimit-Remaining
+   - X-RateLimit-Reset
+   - 429 response with retryAfter
+
+#### Files created/modified:
+- `lib/rateLimit.ts` (NEW) - Rate limiting utility
+- `middleware.ts` (MODIFIED) - Security headers + rate limiting
+
+#### Security Audit Results:
+
+**✅ No SQL Injection Risk**
+- Uses Mongoose ODM (parameterized queries)
+- No raw SQL queries
+- All user inputs are validated/sanitized
+
+**✅ No Sensitive Data Exposed to Client**
+- All env vars used server-side only (app/api, lib)
+- NEXT_PUBLIC_APP_URL is public URL (safe)
+- No private keys in client bundle
+- No API keys exposed to frontend
+
+**✅ Input Validation Present**
+- Email normalization (lowercase, trim)
+- Password length validation (min 8 chars)
+- BEP20 address format validation
+- Amount bounds checking
+- MongoDB ObjectId format validation
+- Daily withdrawal limits (10/day)
+- Bet amount limits (min/max)
+
+**⚠️ Recommendations for Production:**
+1. Add Redis for distributed rate limiting (multi-instance)
+2. Add CSRF token validation for state-changing requests
+3. Consider adding 2FA for withdrawals
+4. Add request logging/monitoring
+5. Consider adding CAPTCHA for registration
+6. Add IP-based blocking for suspicious activity
+
+---
+
+### 2024-04-02: Navbar Cleanup & Welcome Modal Fixes
+
+**Status: DONE**
+
+Cleaned up the navigation, fixed welcome modal persistence, and made the modal responsive.
+
+#### What was implemented:
+
+1. **Bottom Navbar Cleanup**
+   - Removed "Support" from bottom navbar (mobile)
+   - Support still accessible from side menu (hamburger menu)
+   - Kept only principal items: Home, Sports, Games, Bonus, Wallet, Refer
+   - Reduces visual clutter on mobile
+
+2. **Welcome Modal Persistence Fix**
+   - Created `/api/user/welcome-seen` endpoint to mark modal as seen
+   - Modal now calls API when closed (via close button, backdrop click, or final step)
+   - User no longer sees welcome modal repeatedly after closing it
+   - Welcome info still available in Bonuses page FAQ section
+
+3. **Welcome Modal Responsiveness**
+   - Made header height responsive (h-24 on mobile, h-32 on desktop)
+   - Reduced icon size on mobile (40px vs 48px)
+   - Adjusted padding (p-4 on mobile, p-6 on desktop)
+   - Made text sizes responsive throughout
+   - Tightened spacing on mobile
+   - Made close button smaller on mobile
+
+4. **Bonus FAQ Section**
+   - Added collapsible FAQ to Bonuses page
+   - Explains how to get bonus, claim requirements
+   - Details about referral requirements
+   - Duration and expiration info
+   - Users can reference this info anytime
+
+5. **Withdraw Module Review**
+   - Verified withdrawal request endpoint is complete
+   - Verified admin approve/reject workflow is complete
+   - BEP20 transfer module working correctly
+   - Daily withdrawal limit (10 per day) in place
+   - Min/max withdrawal limits ($10-$10,000)
+   - Treasury fee transfer implemented
+
+#### Files modified:
+- `components/Layout.tsx` - Removed Support from navItems, added child menu support for side nav
+- `components/WelcomeModal.tsx` - Made responsive for mobile/desktop
+- `app/api/user/welcome-seen/route.ts` (NEW) - Marks welcome modal as seen
+- `app/bonuses/page.tsx` - Added FAQ section with bonus information
+- `app/faq/page.tsx` (NEW) - FAQ page with categorized questions
+
+---
+
 ### 2024-04-02: Welcome Bonus System with Claim Conditions
 
 **Status: DONE**

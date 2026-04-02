@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, TrendingUp, Users, CheckCircle, Clock, ChevronRight, Lock, Sparkles } from 'lucide-react';
+import { Gift, TrendingUp, Users, CheckCircle, Clock, ChevronRight, Lock, Sparkles, HelpCircle, ChevronDown } from 'lucide-react';
 
 interface Bonus {
   _id: string;
@@ -353,6 +353,73 @@ export default function BonusesPage() {
           </motion.div>
         </div>
       )}
+
+      {/* FAQ Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mt-8 bg-[#161b22] border border-white/10 rounded-2xl p-5"
+      >
+        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+          <HelpCircle size={20} className="text-yellow-400"/>
+          Bonus FAQ
+        </h3>
+
+        <div className="space-y-4">
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
+              <span>How do I get the welcome bonus?</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+            </summary>
+            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+              Make your first deposit of $100 or more. The bonus percentage depends on the amount: $100+ = 20%, $200+ = 30%, $500+ = 40%, $1000+ = 50%.
+            </p>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
+              <span>What are the requirements to claim?</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+            </summary>
+            <div className="mt-2 text-xs text-gray-400 leading-relaxed space-y-2">
+              <p>• Place bets totaling $30 or more</p>
+              <p>• Invite 3 friends who make a deposit</p>
+              <p>• Both requirements must be met within 30 days</p>
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
+              <span>How does the referral requirement work?</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+            </summary>
+            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+              Share your unique referral link with friends. When 3 of your referrals make their first deposit, this requirement is fulfilled. You can find your referral link in the Referrals page.
+            </p>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
+              <span>How long do I have to claim?</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+            </summary>
+            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+              Your welcome bonus expires after 30 days if not claimed. Make sure to meet the requirements and claim before it expires!
+            </p>
+          </details>
+
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer text-sm font-bold text-white hover:text-accent transition-colors">
+              <span>Can I have multiple bonuses?</span>
+              <ChevronDown size={16} className="text-gray-500 group-open:rotate-180 transition-transform"/>
+            </summary>
+            <p className="mt-2 text-xs text-gray-400 leading-relaxed">
+              The welcome bonus is a one-time offer for new users making their first deposit. Only one welcome bonus can be claimed per account.
+            </p>
+          </details>
+        </div>
+      </motion.div>
     </Layout>
   );
 }

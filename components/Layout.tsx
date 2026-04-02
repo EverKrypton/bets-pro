@@ -6,7 +6,8 @@ import Link from 'next/link';
 import {
   Home, Trophy, Wallet, Users, Shield, LogOut, LogIn,
   UserPlus, Briefcase, Menu, X, ChevronRight, ChevronLeft,
-  MessageSquare, Bell, Gamepad2, Gift,
+  MessageSquare, Bell, Gamepad2, Gift, ChevronDown, HelpCircle,
+  DollarSign, FileText, Settings,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Mascot from './Mascot';
@@ -18,10 +19,24 @@ interface Notification {
   _id: string; title: string; body: string; icon: string; createdAt: string;
 }
 
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+}
+
+interface SideNavItem {
+  label: string;
+  path?: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  children?: { label: string; path: string }[];
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [user,          setUser]          = useState<any>(null);
   const [loading,       setLoading]       = useState(true);
   const [sideNav,       setSideNav]       = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [notifOpen,     setNotifOpen]     = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread,        setUnread]        = useState(0);
@@ -32,6 +47,115 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const publicRoutes  = useMemo(() => new Set(['/', '/login', '/register', '/careers']), []);
   const isPublicRoute = publicRoutes.has(pathname);
+
+  const showAdmin = user?.role === 'admin' || user?.role === 'mod' || user?.role === 'recruiter';
+
+  const sideItems: SideNavItem[] = [
+    { label: 'Dashboard',    path: '/',          icon: Home      },
+    { label: 'Sports',     path: '/sports',    icon: Trophy    },
+    { label: 'Games',      path: '/games',     icon: Gamepad2  },
+    { label: 'Wallet',       path: '/wallet',    icon: Wallet    },
+    { 
+      label: 'Rewards', 
+      icon: Gift,
+      children: [
+        { label: 'Bonuses', path: '/bonuses' },
+        { label: 'Referrals', path: '/referrals' },
+      ]
+    },
+    { 
+      label: 'Support', 
+      icon: MessageSquare,
+      children: [
+        { label: 'Live Chat', path: '/support' },
+        { label: 'FAQ', path: '/faq' },
+      ]
+    },
+    ...(showAdmin ? [{ label: 'Admin Panel', path: '/admin', icon: Shield }] : []),
+  ];
+
+  useEffect(() => {
+    const parentsToExpand = new Set<string>();
+    sideItems.forEach(item => {
+      if (item.children) {
+        const childActive = item.children.some(child => pathname === child.path);
+        if (childActive) parentsToExpand.add(item.label);
+      }
+    });
+    setExpandedItems(prev => new Set([...prev, ...parentsToExpand]));
+  }, [pathname]);
+
+  const toggleExpand = (label: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const renderNavItem = (item: SideNavItem, isMobile: boolean = false) => {
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedItems.has(item.label);
+    const isChildActive = hasChildren && item.children!.some(child => pathname === child.path);
+    const isActive = item.path ? pathname === item.path : isChildActive;
+
+    if (hasChildren) {
+      return (
+        <div key={item.label}>
+          <button
+            onClick={() => toggleExpand(item.label)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+              isChildActive ? 'bg-accent/15 text-accent border border-accent/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <item.icon size={17}/>
+            <span className="font-bold text-sm flex-1">{item.label}</span>
+            <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
+          </button>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-7 mt-1 space-y-1">
+                {item.children!.map(child => {
+                  const childActive = pathname === child.path;
+                  return (
+                    <button
+                      key={child.path}
+                      onClick={() => { router.push(child.path); if (isMobile) setSideNav(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                        childActive ? 'bg-accent/10 text-accent' : 'text-gray-500 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {child.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={item.label}
+        onClick={() => { if (item.path) { router.push(item.path); if (isMobile) setSideNav(false); } }}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+          isActive ? 'bg-accent/15 text-accent border border-accent/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+        }`}
+      >
+        <item.icon size={17}/>
+        <span className="font-bold text-sm">{item.label}</span>
+        {!hasChildren && <ChevronRight size={14} className="ml-auto opacity-40"/>}
+      </button>
+    );
+  };
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -96,27 +220,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
   if (!user && !isPublicRoute) return null;
 
-  const showAdmin = user?.role === 'admin' || user?.role === 'mod' || user?.role === 'recruiter';
-
-  const navItems = [
-    { name:'Home',    path:'/',          icon:Home         },
-    { name:'Sports',  path:'/sports',    icon:Trophy       },
-    { name:'Games',   path:'/games',     icon:Gamepad2     },
-    { name:'Bonus',   path:'/bonuses',   icon:Gift         },
-    { name:'Wallet',  path:'/wallet',    icon:Wallet       },
-    { name:'Refer',   path:'/referrals', icon:Users        },
-    { name:'Support', path:'/support',   icon:MessageSquare},
-  ];
-
-  const sideItems = [
-    { label:'Dashboard',    path:'/',          icon:Home           },
-    { label:'Sports Betting', path:'/sports',    icon:Trophy         },
-    { label:'Inverse Betting', path:'/games',    icon:Gamepad2       },
-    { label:'Bonuses',      path:'/bonuses',    icon:Gift           },
-    { label:'My Wallet',      path:'/wallet',    icon:Wallet         },
-    { label:'Referrals',      path:'/referrals', icon:Users          },
-    { label:'Support',        path:'/support',   icon:MessageSquare  },
-    ...(showAdmin ? [{ label:'Admin Panel', path:'/admin', icon:Shield }] : []),
+  const navItems: NavItem[] = [
+    { name: 'Home',    path: '/',          icon: Home      },
+    { name: 'Sports',  path: '/sports',    icon: Trophy    },
+    { name: 'Games',   path: '/games',     icon: Gamepad2  },
+    { name: 'Wallet',  path: '/wallet',    icon: Wallet    },
+    { name: 'Bonus',   path: '/bonuses',   icon: Gift      },
+    { name: 'Refer',   path: '/referrals', icon: Users     },
   ];
 
   return (
@@ -147,19 +257,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         )}
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {sideItems.map(item => {
-            const isActive = pathname === item.path;
-            return (
-              <Link key={item.path} href={item.path}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                  isActive ? 'bg-accent/15 text-accent border border-accent/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <item.icon size={17}/>
-                <span className="font-bold text-sm">{item.label}</span>
-              </Link>
-            );
-          })}
+          {sideItems.map(item => renderNavItem(item, false))}
         </nav>
 
         <div className="px-4 py-4 border-t border-white/8">
@@ -222,20 +320,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )}
 
               <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                {sideItems.map(item => {
-                  const isActive = pathname === item.path;
-                  return (
-                    <button key={item.path} onClick={() => { router.push(item.path); setSideNav(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                        isActive ? 'bg-accent/15 text-accent border border-accent/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <item.icon size={17}/>
-                      <span className="font-bold text-sm">{item.label}</span>
-                      <ChevronRight size={14} className="ml-auto opacity-40"/>
-                    </button>
-                  );
-                })}
+                {sideItems.map(item => renderNavItem(item, true))}
               </nav>
 
               <div className="px-4 py-4 border-t border-white/8">

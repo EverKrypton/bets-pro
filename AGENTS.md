@@ -169,6 +169,26 @@ npm run build  # Next.js build (includes typecheck via tsc)
 - **Motion** for animations (framer-motion compatible)
 - **class-variance-authority + clsx + tailwind-merge** for conditional classes
 - **Mongoose** for MongoDB with connection singleton in `lib/db.ts`
+- **Responsive design**: Mobile-first with breakpoints (sm:, md:, lg:)
+
+## Navigation Structure
+
+### Mobile Bottom Nav (Principal Items Only)
+- Home, Sports, Games, Wallet, Bonus, Refer
+- Simplified for quick access to core features
+
+### Desktop Sidebar (Organized with Child Menus)
+- **Dashboard** - Main overview
+- **Sports** - Sports betting
+- **Games** - Inverse betting
+- **Wallet** - Deposit/Withdraw
+- **Rewards** (expandable)
+  - Bonuses - Welcome bonus progress
+  - Referrals - Referral program
+- **Support** (expandable)
+  - Live Chat - Contact support
+  - FAQ - Common questions
+- **Admin Panel** (admin/mod/recruiter only)
 
 ## Important Implementation Notes
 
@@ -187,3 +207,41 @@ npm run build  # Next.js build (includes typecheck via tsc)
     - Balance check before deduction
     - Admin-only approval process
     - Transaction hash stored for verification
+
+## Security
+
+### Rate Limiting
+- Login: 5 requests/minute
+- Register: 5 requests/hour
+- Bet: 30 requests/minute
+- Withdraw: 5 requests/hour
+- Default: 60 requests/minute
+
+### Security Headers
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY
+- X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
+- Permissions-Policy: restrictive
+
+### Input Validation
+- Email: normalized (lowercase, trimmed)
+- Password: min 8 characters
+- BEP20 addresses: regex validation
+- Amounts: bounds checking
+- ObjectIds: format validation
+
+### Secrets Management
+- `BEP20_ADMIN_PRIVATE_KEY`: Server-side only, never exposed
+- `OXAPAY_MERCHANT_API_KEY`: Server-side only
+- `FOOTBALL_DATA_API_KEY`: Server-side only
+- `MONGODB_URI`: Server-side only
+- `NEXT_PUBLIC_APP_URL`: Safe to expose (public URL)
+
+### Production Recommendations
+1. Use Redis for distributed rate limiting
+2. Add CSRF protection
+3. Consider 2FA for withdrawals
+4. Add request logging/monitoring
+5. CAPTCHA for registration
+6. IP-based suspicious activity detection
