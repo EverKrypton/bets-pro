@@ -54,6 +54,16 @@ export async function POST(req: Request) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const recentWithdrawals = await Transaction.countDocuments({
+      userId: user._id,
+      type: 'withdraw',
+      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    });
+
+    if (recentWithdrawals >= 10) {
+      return NextResponse.json({ error: 'Daily withdrawal limit reached (10 per day)' }, { status: 429 });
+    }
+
     const netAmount = parseFloat((numAmount - fee).toFixed(6));
 
     const updated = await User.findOneAndUpdate(
@@ -64,16 +74,6 @@ export async function POST(req: Request) {
 
     if (!updated) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
-    }
-
-    const recentWithdrawals = await Transaction.countDocuments({
-      userId: user._id,
-      type: 'withdraw',
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    });
-
-    if (recentWithdrawals >= 10) {
-      return NextResponse.json({ error: 'Daily withdrawal limit reached (10 per day)' }, { status: 429 });
     }
 
     const transaction = await Transaction.create({
