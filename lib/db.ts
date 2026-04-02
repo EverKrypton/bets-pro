@@ -20,3 +20,19 @@ export default async function dbConnect() {
   cached.conn = await cached.promise;
   return cached.conn;
 }
+
+export async function withTransaction<T>(
+  fn: (session: mongoose.ClientSession) => Promise<T>
+): Promise<T> {
+  const conn = await dbConnect();
+  const session = await conn.startSession();
+  try {
+    let result: T;
+    await session.withTransaction(async () => {
+      result = await fn(session);
+    });
+    return result!;
+  } finally {
+    await session.endSession();
+  }
+}
