@@ -18,11 +18,11 @@ const faqData = [
       },
       {
         q: 'What is the minimum deposit?',
-        a: 'The minimum deposit is $10 USDT. Deposits are processed instantly via OxaPay.',
+        a: 'The minimum deposit is $1 USDT. Deposits are processed instantly via our payment processor .',
       },
       {
         q: 'What is the minimum bet?',
-        a: 'The minimum bet amount is $1 USDT. Maximum bet limits depend on the match and are shown in the bet slip.',
+        a: 'The minimum bet amount is $0.5 USDT. Maximum bet limits depend on the match and are shown in the bet slip.',
       },
     ],
   },
@@ -56,7 +56,7 @@ const faqData = [
       },
       {
         q: 'How long do withdrawals take?',
-        a: 'Withdrawals are processed by the admin team. Once approved, funds are sent via BEP20 (BNB Smart Chain) and typically arrive within minutes.',
+        a: 'Withdrawals are processed automatically. Once approved, funds are sent via BEP20 (BNB Smart Chain) and typically arrive within minutes.',
       },
       {
         q: 'Is there a withdrawal limit?',
@@ -109,7 +109,7 @@ const faqData = [
     questions: [
       {
         q: 'Is my money safe?',
-        a: 'All deposits are held in secure wallets. Withdrawals are processed manually by the admin team for security. Your password is hashed and never stored in plain text.',
+        a: 'All deposits are held in secure COLD/HOT wallets. Withdrawals are processed automatically by the payment processor. Your password is hashed and never stored in plain text.',
       },
       {
         q: 'How do I change my password?',
