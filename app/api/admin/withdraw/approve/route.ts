@@ -4,46 +4,67 @@ import { getSessionUser }  from '@/lib/session';
 import User                from '@/models/User';
 import Transaction         from '@/models/Transaction';
 import Settings            from '@/models/Settings';
-import { sendBEP20Payout, sendToTreasury } from '@/lib/bep20';
-
-const FEE = 1;
+import { sendBEP20Payout, sendToTreasury, isBEP20Address } from '@/lib/bep20';
 
 export async function POST(req: Request) {
   try {
-    const { transactionId, action } = await req.json();
+    const body = await req.json();
+    const { transactionId, action } = body;
 
-    if (!transactionId || !['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    if (!transactionId || typeof transactionId !== 'string') {
+      return NextResponse.json({ error: 'Transaction ID required' }, { status: 400 });
+    }
+
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return NextResponse.json({ error: 'Action must be "approve" or "reject"' }, { status: 400 });
+    }
+
+    if (!/^[a-fA-F0-9]{24}$/.test(transactionId)) {
+      return NextResponse.json({ error: 'Invalid transaction ID format' }, { status: 400 });
     }
 
     await dbConnect();
 
     const admin = await getSessionUser();
     if (!admin || admin.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: 'Unauthorized - admin only' }, { status: 403 });
     }
 
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction || transaction.type !== 'withdraw' || transaction.status !== 'pending') {
-      return NextResponse.json({ error: 'Invalid transaction' }, { status: 400 });
+    const transaction = await Transaction.findById(transactionId).populate('userId');
+    if (!transaction) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
+
+    if (transaction.type !== 'withdraw') {
+      return NextResponse.json({ error: 'Transaction is not a withdrawal' }, { status: 400 });
+    }
+
+    if (transaction.status !== 'pending') {
+      return NextResponse.json({ error: `Transaction already ${transaction.status}` }, { status: 400 });
+    }
+
+    const details = transaction.details as { address: string; network: string; grossAmount?: number; fee?: number };
 
     if (action === 'approve') {
-      const details = transaction.details as { address: string; network: string; grossAmount?: number; fee?: number };
-      const address = details.address;
-      const amount = transaction.amount;
-
       if (details.network !== 'BEP20') {
         return NextResponse.json({ error: 'Only BEP20 withdrawals are supported' }, { status: 400 });
       }
 
-      const result = await sendBEP20Payout(
-        address,
-        amount,
-        transactionId,
-      );
+      if (!isBEP20Address(details.address)) {
+        return NextResponse.json({ error: 'Invalid BEP20 address' }, { status: 400 });
+      }
+
+      const amount = transaction.amount;
+      if (amount <= 0 || amount > 100000) {
+        return NextResponse.json({ error: 'Invalid withdrawal amount' }, { status: 400 });
+      }
+
+      const result = await sendBEP20Payout(details.address, amount, transactionId);
 
       if (!result.success) {
+        transaction.status = 'failed';
+        transaction.details = { ...details, errorMessage: result.message };
+        await transaction.save();
         return NextResponse.json({ error: result.message }, { status: 400 });
       }
 
@@ -54,14 +75,15 @@ export async function POST(req: Request) {
 
       const settings = await Settings.findOne({ key: 'global' });
       const treasuryAddress = settings?.treasuryWalletAddress;
+      const fee = details.fee || settings?.withdrawFee || 1;
 
-      if (treasuryAddress && /^0x[a-fA-F0-9]{40}$/.test(treasuryAddress)) {
-        const treasuryResult = await sendToTreasury(FEE, treasuryAddress);
+      if (treasuryAddress && isBEP20Address(treasuryAddress) && fee > 0) {
+        const treasuryResult = await sendToTreasury(fee, treasuryAddress);
         if (treasuryResult.success) {
           transaction.details = { 
             ...transaction.details as object, 
             treasuryTxHash: treasuryResult.txHash,
-            feeSent: FEE 
+            feeSent: fee 
           };
           await transaction.save();
         } else {
@@ -85,7 +107,7 @@ export async function POST(req: Request) {
         await user.save();
       }
 
-      return NextResponse.json({ success: true, transaction });
+      return NextResponse.json({ success: true, transaction, message: 'Withdrawal rejected and balance refunded' });
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

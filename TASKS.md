@@ -2,6 +2,153 @@
 
 ## Completed Tasks
 
+### 2024-04-02: Welcome Bonus System with Claim Conditions
+
+**Status: DONE**
+
+Implemented a comprehensive welcome bonus system with professional UI and claim conditions.
+
+#### What was implemented:
+
+1. **Bonus Model** (`models/Bonus.ts`)
+   - Tracks bonus eligibility, status, and progress
+   - Fields: `userId`, `type`, `status`, `firstDepositAmount`, `bonusAmount`, `bonusPercent`
+   - Requirements: `requiredBetVolume`, `requiredReferrals`, `currentBetVolume`, `currentReferrals`
+   - Expiry: 30 days from creation
+
+2. **User Model Updates** (`models/User.ts`)
+   - Added `welcomeBonusSeen` - tracks if welcome modal was shown
+   - Added `firstDepositDone` - tracks first deposit status
+   - Added `totalBetsVolume` - tracks cumulative betting volume
+
+3. **Welcome Modal** (`components/WelcomeModal.tsx`)
+   - 3-step onboarding carousel
+   - Shows platform introduction and bonus tiers
+   - Professional animations with framer-motion
+   - Displays bonus tiers table ($100+ = 20%, $200+ = 30%, etc.)
+
+4. **Bonuses Page** (`app/bonuses/page.tsx`)
+   - Progress bars for betting volume requirement ($30+)
+   - Progress bars for referral requirement (3 with deposits)
+   - Real-time claim button that enables when requirements met
+   - Animated card with gradient backgrounds
+   - Bonus tier information card
+   - Link to referral page for more invites
+
+5. **API Endpoints**
+   - `GET /api/bonus` - Fetch user's bonus status and stats
+   - `POST /api/bonus` - Create bonus on first deposit (>= $100)
+   - `POST /api/bonus/claim` - Claim bonus after requirements met
+
+6. **Bonus Tiers** (First Deposit)
+   | Deposit Amount | Bonus % |
+   |----------------|---------|
+   | $100+ | 20% |
+   | $200+ | 30% |
+   | $500+ | 40% |
+   | $1000+ | 50% |
+
+7. **Claim Requirements**
+   - User must bet $30+ total
+   - User must invite 3 friends who deposit
+
+8. **Navigation Updates**
+   - Added "Bonus" to mobile bottom nav
+   - Added "Bonuses" to desktop sidebar
+   - Uses Gift icon from lucide-react
+
+9. **Webhook Integration** (`app/api/webhook/oxapay/route.ts`)
+   - Auto-creates welcome bonus on first deposit >= $100
+   - Sends notification when bonus unlocked
+
+#### Files created/modified:
+- `models/Bonus.ts` (NEW)
+- `models/User.ts` (MODIFIED)
+- `components/WelcomeModal.tsx` (NEW)
+- `app/bonuses/page.tsx` (NEW)
+- `app/api/bonus/route.ts` (NEW)
+- `app/api/bonus/claim/route.ts` (NEW)
+- `components/Layout.tsx` (MODIFIED - added bonus nav)
+- `app/api/webhook/oxapay/route.ts` (MODIFIED - create bonus on deposit)
+
+---
+
+### 2024-04-02: Inverse Betting System
+
+**Status: DONE**
+
+Added inverse betting (betting against outcomes) as a separate "Games" section.
+
+#### What was implemented:
+
+1. **Inverse Betting Page** (`app/games/page.tsx`)
+   - Same matches as sports but with inverse odds
+   - Users bet that outcome WON'T happen
+   - Yellow/gold theme to differentiate from normal betting
+   - Progress tracking for inverse bets
+
+2. **Inverse Odds Calculation**
+   - `inverseOdds = odds / (odds - 1)`
+   - Preserves house edge from display odds
+   - Mathematically fair inverse positions
+
+3. **API Endpoints**
+   - `POST /api/bet/inverse` - Place inverse bet
+   - `GET /api/bets/inverse` - Fetch user's inverse bets
+
+4. **Bet Model Update**
+   - Added `isInverse: boolean` field
+   - Inverse bets settled opposite to normal bets
+
+5. **Settlement Logic** (`app/api/admin/matches/[id]/route.ts`)
+   - Added `INVERSE_WINS` mapping for inverse bet outcomes
+   - Inverse bet wins when selected outcome does NOT occur
+
+#### Files created/modified:
+- `app/games/page.tsx` (NEW)
+- `app/api/bet/inverse/route.ts` (NEW)
+- `app/api/bets/inverse/route.ts` (NEW)
+- `models/Bet.ts` (MODIFIED)
+- `app/api/admin/matches/[id]/route.ts` (MODIFIED)
+- `components/Layout.tsx` (MODIFIED - added Games nav)
+
+---
+
+### 2024-04-02: OxaPay Webhook Security Fixes
+
+**Status: DONE**
+
+Fixed OxaPay webhook to properly handle deposits and added comprehensive logging.
+
+#### What was implemented:
+
+1. **HMAC Header Fix**
+   - Now checks both `HMAC` and `hmac` headers (case-insensitive)
+   - HMAC comparison is case-insensitive
+
+2. **Comprehensive Logging**
+   - Logs received webhook data
+   - Logs HMAC validation results
+   - Logs user lookup attempts (by order_id, address, track_id)
+   - Logs deposit processing success
+
+3. **Multiple User Lookup Methods**
+   - Primary: `order_id` format `deposit-{userId}`
+   - Fallback: `depositAddress` on User model
+   - Fallback: `depositTrackId` on User model
+
+4. **Status Field Fix**
+   - Changed `status === 'Paid'` to `status?.toLowerCase() === 'paid'`
+   - Handles case variations from OxaPay
+
+5. **Added 'payment' to PAYMENT_TYPES**
+   - OxaPay can send `type: 'payment'` for some transactions
+
+#### Files modified:
+- `app/api/webhook/oxapay/route.ts`
+
+---
+
 ### 2024-04-01: Financial Summary Dashboard for Active Bets
 
 **Status: DONE**
