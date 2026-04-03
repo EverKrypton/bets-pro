@@ -89,14 +89,41 @@ The house edge is baked into every displayed odd. Users always bet at worse-than
 
 ## OxaPay Webhook
 
-Configure in your OxaPay dashboard:
-```
-POST  https://your-domain.com/api/webhook/oxapay
-```
+**IMPORTANT**: Configure BOTH of these for webhooks to work:
 
-HMAC key selection (automatic):
-- `type: static_address` → signed with `MERCHANT_API_KEY`
-- `type: payout` → signed with `PAYOUT_API_KEY`
+### 1. OxaPay Dashboard Configuration
+1. Go to https://app.oxapay.com/merchant-service
+2. Create or edit your Merchant API key
+3. In **Advanced Options**, set the **Callback URL** to:
+   ```
+   https://your-domain.com/api/webhook/oxapay
+   ```
+4. Save the configuration
+
+### 2. Environment Variables
+Ensure these are set in your Vercel/hosting environment:
+- `OXAPAY_MERCHANT_API_KEY` — Your OxaPay merchant key
+- `OXAPAY_PAYOUT_API_KEY` — Your OxaPay payout key (for withdrawals)
+- `NEXT_PUBLIC_APP_URL` — Your app's public URL
+
+### 3. Webhook Endpoint
+The webhook handler is at `/api/webhook/oxapay` and accepts POST requests with HMAC-SHA512 verification.
+
+**Webflow flow:**
+1. OxaPay sends POST to your callback URL with payment data
+2. Your server validates HMAC signature using your merchant key
+3. On success, user balance is credited automatically
+4. Welcome bonus is created for first deposits ≥ $100
+
+**Supported payment types:** `invoice`, `white_label`, `static_address`, `payment_link`, `donation`, `payment`
+
+**Supported statuses:** `Paid`, `Completed`, `Confirmed` (case-insensitive)
+
+**Troubleshooting:**
+- Check Vercel/Netlify logs for `[OxaPay]` entries
+- Verify `NEXT_PUBLIC_APP_URL` matches your deployment URL
+- Ensure callback URL is accessible (no auth blocking `/api/webhook/oxapay`)
+- Test with webhook.site to verify OxaPay is sending webhooks
 
 ---
 

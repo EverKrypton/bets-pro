@@ -56,6 +56,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
+          name="email"
           placeholder={t.auth.email}
           className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors"
           required
@@ -64,6 +65,8 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           type="password"
+          name="password"
+          autoComplete="current-password"
           placeholder={t.auth.password}
           className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors"
           required

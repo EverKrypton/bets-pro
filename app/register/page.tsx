@@ -102,12 +102,15 @@ function RegisterForm() {
 
       <input value={username} onChange={e => setUsername(e.target.value)} placeholder={t.auth.username}
         className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" required minLength={3} maxLength={20}
+        name="username" autoComplete="username"
       />
       <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t.auth.email}
         className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" required
+        name="email" autoComplete="email"
       />
       <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder={t.auth.password}
         className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-accent/50 transition-colors" minLength={8} required
+        name="password" autoComplete="new-password"
       />
 
       <div className="space-y-1.5">

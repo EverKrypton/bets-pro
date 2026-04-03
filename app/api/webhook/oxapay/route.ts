@@ -18,6 +18,15 @@ const PAYMENT_TYPES = new Set([
   'payment',
 ]);
 
+const PAID_STATUSES = new Set([
+  'Paid',
+  'paid',
+  'Completed',
+  'completed',
+  'Confirmed',
+  'confirmed',
+]);
+
 function ok() {
   return new Response('ok', { status: 200 });
 }
@@ -111,7 +120,7 @@ export async function POST(req: Request): Promise<Response> {
     const settings = await Settings.findOne({ key: 'global' });
     const minDeposit = settings?.minDepositAmount ?? 10;
 
-    if (type && PAYMENT_TYPES.has(type) && status === 'Paid') {
+    if (type && PAYMENT_TYPES.has(type) && PAID_STATUSES.has(status || '')) {
       if (!track_id) {
         console.error('[OxaPay] Missing track_id');
         return ok();
