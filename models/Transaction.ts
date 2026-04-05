@@ -13,6 +13,4 @@ const TransactionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-TransactionSchema.index({ txId: 1 }, { unique: true, sparse: true });
-
 export default mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);

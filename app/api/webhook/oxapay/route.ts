@@ -141,7 +141,11 @@ export async function POST(req: Request): Promise<Response> {
       if (order_id && order_id.startsWith('deposit-')) {
         const userId = order_id.slice(8);
         console.log('[OxaPay] Looking up user by order_id:', userId);
-        user = await User.findById(userId);
+        if (/^[0-9a-fA-F]{24}$/.test(userId)) {
+          user = await User.findById(userId);
+        } else {
+          console.warn('[OxaPay] Invalid ObjectId format for userId:', userId);
+        }
         if (!user) console.error('[OxaPay] User not found from order_id:', userId);
       }
 
